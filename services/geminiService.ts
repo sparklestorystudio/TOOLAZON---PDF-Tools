@@ -3,12 +3,16 @@ import { GoogleGenAI } from "@google/genai";
 let ai: GoogleGenAI | null = null;
 
 export const initializeGemini = () => {
+  if (ai) return;
+
   let apiKey = '';
   
-  // Robust check for process.env to prevent browser crashes
+  // Robust check for process.env to prevent browser crashes if process is not defined
   try {
+    // @ts-ignore
     if (typeof process !== 'undefined' && process && process.env) {
-      apiKey = process.env.API_KEY || '';
+        // @ts-ignore
+        apiKey = process.env.API_KEY || '';
     }
   } catch (e) {
     console.warn("Unable to access process.env API key", e);
@@ -24,11 +28,10 @@ export const initializeGemini = () => {
 };
 
 export const getGeminiResponse = async (userMessage: string): Promise<string> => {
+  initializeGemini();
+  
   if (!ai) {
-    initializeGemini();
-    if (!ai) {
-      return "I'm sorry, I can't connect to the AI service right now. Please check your API key configuration.";
-    }
+    return "I'm sorry, I can't connect to the AI service right now. Please check your API key configuration.";
   }
 
   try {

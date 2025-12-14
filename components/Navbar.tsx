@@ -212,13 +212,18 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
             >
                <Globe className="w-5 h-5" />
             </button>
-            <div className="relative w-6 h-6 rounded-full overflow-hidden shadow-sm cursor-pointer hover:scale-110 transition-transform">
-                <input 
-                type="color" 
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
+            
+            {/* Color Picker Icon */}
+            <div 
+                className="relative w-6 h-6 rounded-full overflow-hidden shadow-sm cursor-pointer hover:scale-110 transition-transform border border-gray-200 ring-2 ring-white"
+                style={{ backgroundColor: themeColor }}
                 title="Choose theme color"
-                className="absolute inset-[-50%] w-[200%] h-[200%] cursor-pointer border-none p-0 m-0"
+            >
+                <input 
+                    type="color" 
+                    value={themeColor}
+                    onChange={(e) => setThemeColor(e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
             </div>
           </div>
