@@ -3,6 +3,7 @@ import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, ArrowRight } 
 import * as pdfjsLib from 'pdfjs-dist';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
@@ -176,6 +177,8 @@ const PdfToWord: React.FC = () => {
   if (step === 'options') {
       return (
           <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
+              {processing && <ProcessingOverlay status="Converting to Word..." progress={progress} />}
+              
               <h2 className="text-3xl font-bold text-gray-800 mb-2">PDF to Word</h2>
               <div className="mb-8 text-sm text-gray-400">Selected: {file?.name}</div>
 
@@ -213,18 +216,6 @@ const PdfToWord: React.FC = () => {
               </div>
 
               <div className="w-full max-w-md mx-auto">
-                  {processing && (
-                      <div className="mb-4">
-                          <div className="flex justify-between text-xs text-gray-500 mb-1">
-                              <span>Converting...</span>
-                              <span>{progress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                              <div className="bg-brand-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                          </div>
-                      </div>
-                  )}
-                  
                   <button onClick={convert} disabled={processing} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 rounded shadow-md text-lg flex items-center justify-center transition-colors disabled:opacity-70">
                       {processing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                       Continue <ArrowRight className="w-5 h-5 ml-2" />

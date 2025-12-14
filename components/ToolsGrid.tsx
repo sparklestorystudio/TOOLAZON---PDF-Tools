@@ -21,17 +21,17 @@ const ToolCard: React.FC<ToolCardProps> = ({ item, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full group"
+      className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col h-full group"
     >
-      <div className="flex items-start mb-3">
-        <div className={`p-2 rounded-md bg-opacity-10 mr-3 ${bgColorClass}`}>
+      <div className="flex items-start mb-4">
+        <div className={`p-3 rounded-lg bg-opacity-10 mr-4 ${bgColorClass}`}>
           <Icon className={`w-6 h-6 ${item.color || 'text-gray-600'}`} />
         </div>
-        <h3 className="text-gray-800 font-semibold group-hover:text-brand-600 transition-colors">
+        <h3 className="text-gray-800 font-bold text-lg group-hover:text-brand-600 transition-colors mt-1">
             {title}
         </h3>
       </div>
-      <p className="text-gray-500 text-xs leading-relaxed mt-1">
+      <p className="text-gray-500 text-sm leading-relaxed">
         {description}
       </p>
     </div>
@@ -99,14 +99,14 @@ const ToolsGrid: React.FC<NavProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-20 -mt-10 relative z-10">
-      <div className="space-y-12">
+    <div id="all-tools" className="max-w-[1200px] mx-auto px-4 md:px-8 pb-24 -mt-12 relative z-10 scroll-mt-28">
+      <div className="space-y-16">
         {TOOL_CATEGORIES.map((category) => (
           <div key={category.title}>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 inline-block">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-gray-200 pb-2 inline-block">
               {getCatTitle(category.title)}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {category.items.map((item) => (
                 <ToolCard 
                   key={item.id} 

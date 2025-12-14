@@ -3,12 +3,12 @@ import { FileUp, Download, HelpCircle, Loader2, ZoomIn, ZoomOut, RotateCcw, Chec
 import { useLanguage } from '../../contexts/LanguageContext';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import which might be a default export in some CDN environments
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
 
 // Define the worker src for pdfjs
-// Using unpkg as a reliable source for the worker script
 if (pdfjs && pdfjs.GlobalWorkerOptions) {
     pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
 }
@@ -25,6 +25,7 @@ const ExtractPages: React.FC = () => {
   const [pages, setPages] = useState<PageThumbnail[]>([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [scale, setScale] = useState(1);
   const [selectionRange, setSelectionRange] = useState('');
   
@@ -77,6 +78,8 @@ const ExtractPages: React.FC = () => {
       let msg = "Error loading PDF. Please try another file.";
       if (error?.name === 'MissingPDFException') {
         msg = "The PDF file is missing or invalid.";
+      } else if (error?.name === 'PasswordException') {
+        msg = "This file is password protected. Please unlock it first.";
       } else if (error?.message?.includes('worker')) {
         msg = "PDF Worker failed to load. Please check your connection or reload the page.";
       }
@@ -144,9 +147,17 @@ const ExtractPages: React.FC = () => {
     }
 
     setProcessing(true);
+    setProgress(0);
+
     try {
+      // Simulate progress for UX
+      const progressInterval = setInterval(() => {
+          setProgress(prev => Math.min(90, prev + 10));
+      }, 300);
+
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      // Fix: Support owner-locked files by passing empty password
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
       const newPdf = await PDFDocument.create();
       
       const copiedPages = await newPdf.copyPages(pdfDoc, selectedIndices);
@@ -154,6 +165,9 @@ const ExtractPages: React.FC = () => {
       
       const pdfBytes = await newPdf.save();
       
+      clearInterval(progressInterval);
+      setProgress(100);
+
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -163,9 +177,13 @@ const ExtractPages: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error extracting pages", error);
-      alert("Failed to extract pages.");
+      if (error.message && (error.message.includes('encrypted') || error.message.includes('password'))) {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("Failed to extract pages.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -212,6 +230,8 @@ const ExtractPages: React.FC = () => {
   // Selection Screen
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+      {processing && <ProcessingOverlay status="Extracting pages..." progress={progress} />}
+      
       {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 py-4 px-6 flex flex-col md:flex-row items-center justify-between sticky top-[60px] z-30 shadow-sm gap-4 md:gap-0">
         <div className="text-center md:text-left mb-4 md:mb-0">
@@ -294,13 +314,12 @@ const ExtractPages: React.FC = () => {
                 />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-col">
                  <button 
                    onClick={handleExtract}
                    disabled={processing || pages.filter(p => p.selected).length === 0}
                    className="bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-md shadow-sm transition-colors flex items-center min-w-[160px] justify-center"
                  >
-                    {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Extract pages
                  </button>
             </div>

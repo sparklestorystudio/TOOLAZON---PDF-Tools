@@ -81,9 +81,13 @@ const SplitPdf: React.FC = () => {
         }
       }
       setPages(newPages);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading PDF", error);
-      alert("Error loading PDF");
+      if (error?.name === 'PasswordException') {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("Error loading PDF");
+      }
       setFile(null);
       setStep('upload');
     } finally {
@@ -175,7 +179,8 @@ const SplitPdf: React.FC = () => {
 
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const srcDoc = await PDFDocument.load(arrayBuffer);
+        // Fix: Support owner-locked files by passing empty password
+        const srcDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
         const totalPages = srcDoc.getPageCount();
         
         const zip = new JSZip();
@@ -209,9 +214,13 @@ const SplitPdf: React.FC = () => {
         setResultUrl(url);
         setStep('success');
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        alert("Failed to split PDF");
+        if (e.message && (e.message.includes('encrypted') || e.message.includes('password'))) {
+            alert("This file is password protected. Please unlock it first.");
+        } else {
+            alert("Failed to split PDF");
+        }
     } finally {
         setProcessing(false);
     }

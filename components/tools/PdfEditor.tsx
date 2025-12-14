@@ -855,8 +855,6 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
 // --- MAIN COMPONENT ---
 
 const PdfEditor: React.FC = () => {
-  // ... (No changes needed to Main Component logic as it primarily handles state that PdfPageRenderer consumes)
-  // Re-exporting the full component structure to ensure file integrity
   const { t } = useLanguage();
   
   // Workflow
@@ -962,18 +960,14 @@ const PdfEditor: React.FC = () => {
             let startIndex = 0;
             
             while ((startIndex = lowerText.indexOf(lowerFind, startIndex)) > -1) {
-               // Approximate geometry
-               // item.transform is [scaleX, skewY, skewX, scaleY, x, y]
                const fontSize = Math.sqrt(item.transform[0]*item.transform[0] + item.transform[1]*item.transform[1]);
                
-               // Simple width approximation
                const fullWidth = item.width;
                const charWidth = fullWidth / text.length;
                
                const matchX = item.transform[4] + (startIndex * charWidth);
                const actualMatchWidth = charWidth * findText.length;
 
-               // Bottom-left Y to Top-Left Y conversion
                const pdfY = item.transform[5];
                const appY = height - pdfY - fontSize * 0.8; 
                
@@ -998,7 +992,6 @@ const PdfEditor: React.FC = () => {
       setCurrentMatchIndex(0);
       if (matches.length > 0) {
         setSelectedPageIdx(matches[0].pageIndex);
-        // Ensure visible
         const el = document.getElementById(`page-${matches[0].pageIndex}`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -1013,7 +1006,6 @@ const PdfEditor: React.FC = () => {
     if (searchResults.length === 0) return;
     const match = searchResults[currentMatchIndex];
     
-    // 1. Add Whiteout
     const whiteoutAnn: Annotation = {
         id: Math.random().toString(),
         type: 'whiteout',
@@ -1024,7 +1016,6 @@ const PdfEditor: React.FC = () => {
         color: 'white'
     };
     
-    // 2. Add New Text
     const textAnn: Annotation = {
         id: Math.random().toString(),
         type: 'text',
@@ -1040,7 +1031,6 @@ const PdfEditor: React.FC = () => {
     newPages[match.pageIndex].annotations.push(whiteoutAnn, textAnn);
     updatePages(newPages);
     
-    // Remove from results and advance
     const newResults = [...searchResults];
     newResults.splice(currentMatchIndex, 1);
     setSearchResults(newResults);
@@ -1118,9 +1108,13 @@ const PdfEditor: React.FC = () => {
       setHistoryIndex(0);
       setPages(newPages);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error loading PDF");
+      if (err.name === 'PasswordException') {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("Error loading PDF");
+      }
       setStep('upload');
     } finally {
       setLoading(false);
@@ -1398,7 +1392,8 @@ const PdfEditor: React.FC = () => {
       setProcessing(true);
       try {
           const arrayBuffer = await file.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          // Fix: Support owner-locked files by passing empty password
+          const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
 
           const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
           const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -1565,9 +1560,13 @@ const PdfEditor: React.FC = () => {
           setResultUrl(url);
           setStep('success');
 
-      } catch (err) {
+      } catch (err: any) {
           console.error(err);
-          alert("Failed to save PDF: " + err);
+          if (err.message && (err.message.includes('encrypted') || err.message.includes('password'))) {
+              alert("This file is password protected. Please unlock it first.");
+          } else {
+              alert("Failed to save PDF: " + err);
+          }
       } finally {
           setProcessing(false);
       }
@@ -1581,6 +1580,7 @@ const PdfEditor: React.FC = () => {
       setResultUrl(null);
   };
 
+  // ... (Remainder of file is identical)
   const ToolbarButton = ({ 
       active, onClick, icon: Icon, label, dropdown, tooltip 
   }: { active?: boolean, onClick: () => void, icon: any, label: string, dropdown?: boolean, tooltip?: string }) => (

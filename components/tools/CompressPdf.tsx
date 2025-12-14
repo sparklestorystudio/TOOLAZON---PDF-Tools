@@ -3,6 +3,7 @@ import { FileUp, ChevronDown, Check, Loader2, FileText, Settings, Download, Refr
 import { PDFDocument } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 interface CompressionStats {
   originalSize: number;
@@ -61,7 +62,8 @@ const CompressPdf: React.FC = () => {
       }, 200);
 
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      // Fix: Support owner-locked files by passing empty password
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
       
       // Simulate compression logic since pdf-lib doesn't support advanced compression natively
       // In a real app, this would involve server-side processing or specialized libraries
@@ -90,9 +92,13 @@ const CompressPdf: React.FC = () => {
       });
       setIsDone(true);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Compression error:", error);
-      alert("An error occurred while compressing the PDF.");
+      if (error.message && (error.message.includes('encrypted') || error.message.includes('password'))) {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("An error occurred while compressing the PDF.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -188,6 +194,8 @@ const CompressPdf: React.FC = () => {
   // 2. Configure View
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+        {isProcessing && <ProcessingOverlay status="Compressing PDF..." progress={progress} />}
+        
         {/* Top Header */}
         <div className="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center shadow-sm">
             <h2 className="text-xl font-bold text-gray-800">Compress PDF online</h2>
@@ -271,30 +279,12 @@ const CompressPdf: React.FC = () => {
         {/* Bottom Bar */}
         <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-40">
             <div className="max-w-md mx-auto">
-                {isProcessing && (
-                    <div className="mb-3">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Compressing...</span>
-                            <span>{progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-brand-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                        </div>
-                    </div>
-                )}
                 <button 
                     onClick={handleCompress}
                     disabled={isProcessing}
                     className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-bold py-4 rounded-lg shadow-md flex items-center justify-center text-lg transition-colors"
                 >
-                    {isProcessing ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                            Processing...
-                        </>
-                    ) : (
-                        'Compress PDF'
-                    )}
+                    Compress PDF
                 </button>
             </div>
         </div>

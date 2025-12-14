@@ -37,6 +37,7 @@ const CropPdf: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
 
@@ -47,18 +48,16 @@ const CropPdf: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1); // 1-based index for UI
 
   // Crop Configurations
-  // We maintain separate boxes for Global, Odd, and Even strategies.
   const [cropConfigs, setCropConfigs] = useState<{global: Box, odd: Box, even: Box}>({
       global: { x: 0, y: 0, width: 0, height: 0 },
       odd: { x: 0, y: 0, width: 0, height: 0 },
       even: { x: 0, y: 0, width: 0, height: 0 }
   });
 
-  // Derived state to determine which box we are currently editing/viewing
   const [activeGroup, setActiveGroup] = useState<CropGroup>('global');
   
   // UI State
-  const [scale, setScale] = useState(1.0); // Visual scale
+  const [scale, setScale] = useState(1.0); 
   const [unit, setUnit] = useState<'inch' | 'cm'>('inch');
   
   // Dragging
@@ -67,19 +66,16 @@ const CropPdf: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Constants for conversion
   const unitToPt = unit === 'inch' ? INCH_TO_PT : CM_TO_PT;
 
-  // Sync active group with editor mode
   useEffect(() => {
       if (editorMode === 'blended' || editorMode === 'page-by-page') {
           setActiveGroup('global');
       } else if (editorMode === 'odd-even') {
-          setActiveGroup('odd'); // Default to odd when switching
+          setActiveGroup('odd');
       }
   }, [editorMode]);
 
-  // Current active box helper
   const getCurrentBox = () => cropConfigs[activeGroup];
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,18 +85,15 @@ const CropPdf: React.FC = () => {
       setResultUrl(null);
       setStep('options');
       
-      // Get basic info
       const arrayBuffer = await selectedFile.arrayBuffer();
       const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
       setNumPages(pdf.numPages);
       
-      // Get dimensions from first page
       const page = await pdf.getPage(1);
       const viewport = page.getViewport({ scale: 1 });
       setPdfPageSize({ width: viewport.width, height: viewport.height });
       
-      // Default crop box (10% margins)
       const defaultBox = {
         x: viewport.width * 0.1,
         y: viewport.height * 0.1,
@@ -123,7 +116,7 @@ const CropPdf: React.FC = () => {
     let minX = width, minY = height, maxX = 0, maxY = 0;
     
     // Simple scan for non-white pixels
-    for (let y = 0; y < height; y += 5) { // Skip steps for speed
+    for (let y = 0; y < height; y += 5) {
         for (let x = 0; x < width; x += 5) {
             const i = (y * width + x) * 4;
             const r = data[i];
@@ -140,7 +133,7 @@ const CropPdf: React.FC = () => {
         }
     }
     
-    if (maxX < minX) return null; // Empty page
+    if (maxX < minX) return null; 
 
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   };
@@ -154,22 +147,18 @@ const CropPdf: React.FC = () => {
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
 
-        // Create canvas
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        // Render at scale=1 (Points)
         const renderScale = 1.0; 
         canvas.width = pdfPageSize.width * renderScale;
         canvas.height = pdfPageSize.height * renderScale;
 
-        // Clear
         context.fillStyle = 'white';
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         if (editorMode === 'blended') {
-            // Render first 5 pages blended
             const limit = Math.min(numPages, 5);
             context.globalAlpha = 1 / limit + 0.1; 
             
@@ -180,19 +169,16 @@ const CropPdf: React.FC = () => {
             }
         } 
         else if (editorMode === 'page-by-page') {
-            // Render specific page
             const page = await pdf.getPage(currentPage);
             const viewport = page.getViewport({ scale: renderScale });
             context.globalAlpha = 1.0;
             await page.render({ canvasContext: context, viewport }).promise;
         }
         else if (editorMode === 'odd-even') {
-            // Render blended odd OR blended even based on activeGroup
             const start = activeGroup === 'odd' ? 1 : 2;
-            context.globalAlpha = 0.4; // Slightly stronger blend for fewer pages
+            context.globalAlpha = 0.4; 
             
             let count = 0;
-            // Render first 3 of the sequence (e.g., 1,3,5 or 2,4,6)
             for(let i = start; i <= numPages && count < 3; i += 2) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: renderScale });
@@ -238,7 +224,6 @@ const CropPdf: React.FC = () => {
                  height: Math.min(pdfPageSize.height - (bbox.y - padding), bbox.height + (padding*2))
              };
              
-             // Update the current active configuration
              setCropConfigs(prev => ({
                  ...prev,
                  [activeGroup]: newBox
@@ -259,7 +244,6 @@ const CropPdf: React.FC = () => {
           setStep('editor');
           setTimeout(handleAutoCrop, 500);
       } else {
-           // 'max-crop'
            processCrop('max-crop');
       }
   };
@@ -267,27 +251,30 @@ const CropPdf: React.FC = () => {
   const processCrop = async (mode: CropMode | 'manual' = 'manual') => {
       if (!file || !pdfPageSize) return;
       setProcessing(true);
+      setProgress(0);
 
       try {
           const arrayBuffer = await file.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          // Fix: Support owner-locked files by passing empty password
+          const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
           const pages = pdfDoc.getPages();
 
           if (mode === 'max-crop') {
-             pages.forEach(page => {
+             for (let i = 0; i < pages.length; i++) {
+                 const page = pages[i];
                  const { width, height } = page.getSize();
                  page.setCropBox(width * 0.1, height * 0.1, width * 0.8, height * 0.8);
-             });
+                 setProgress(Math.round(((i + 1) / pages.length) * 90));
+             }
           } else {
-              // Manual cropping based on mode
-              pages.forEach((page, index) => {
-                  const pageIndex = index + 1; // 1-based
+              for (let i = 0; i < pages.length; i++) {
+                  const page = pages[i];
+                  const pageIndex = i + 1; // 1-based
                   let boxToUse: Box;
 
                   if (editorMode === 'odd-even') {
                       boxToUse = (pageIndex % 2 !== 0) ? cropConfigs.odd : cropConfigs.even;
                   } else {
-                      // Blended or Page-by-page (Global apply)
                       boxToUse = cropConfigs.global;
                   }
 
@@ -296,18 +283,25 @@ const CropPdf: React.FC = () => {
                   const y = pdfPageSize.height - (boxToUse.y + height);
                   
                   page.setCropBox(x, y, width, height);
-              });
+                  setProgress(Math.round(((i + 1) / pages.length) * 90));
+              }
           }
 
           const pdfBytes = await pdfDoc.save();
+          setProgress(100);
+          
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
           setResultUrl(url);
           setStep('success');
 
-      } catch (err) {
+      } catch (err: any) {
           console.error(err);
-          alert("Error processing PDF");
+          if (err.message && (err.message.includes('encrypted') || err.message.includes('password'))) {
+              alert("This file is password protected. Please unlock it first.");
+          } else {
+              alert("Error processing PDF");
+          }
       } finally {
           setProcessing(false);
       }
@@ -394,6 +388,7 @@ const CropPdf: React.FC = () => {
     });
     setEditorMode('blended');
     setCurrentPage(1);
+    setProgress(0);
   };
 
   const cropBox = getCurrentBox();
@@ -735,6 +730,17 @@ const CropPdf: React.FC = () => {
         {/* Bottom Bar */}
         <div className="bg-[#fff9e6] border-t border-orange-100 p-4 sticky bottom-0 z-40">
              <div className="max-w-md mx-auto">
+                 {processing && (
+                    <div className="mb-3">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Processing...</span>
+                            <span>{progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-brand-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                        </div>
+                    </div>
+                 )}
                  <button 
                      onClick={() => processCrop('manual')}
                      disabled={processing}

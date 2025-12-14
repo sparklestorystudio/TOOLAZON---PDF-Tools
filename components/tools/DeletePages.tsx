@@ -23,6 +23,7 @@ const DeletePages: React.FC = () => {
   const [pages, setPages] = useState<PageThumbnail[]>([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [scale, setScale] = useState(1);
   const [deleteRange, setDeleteRange] = useState('');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -74,7 +75,11 @@ const DeletePages: React.FC = () => {
       setPages(newPages);
     } catch (error: any) {
       console.error("Error loading PDF", error);
-      alert("Error loading PDF. Please try another file.");
+      if (error?.name === 'PasswordException') {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("Error loading PDF. Please try another file.");
+      }
       setFile(null);
     } finally {
       setLoading(false);
@@ -138,9 +143,17 @@ const DeletePages: React.FC = () => {
     }
 
     setProcessing(true);
+    setProgress(0);
+
     try {
+      // Simulate progress for UX
+      const progressInterval = setInterval(() => {
+          setProgress(prev => Math.min(90, prev + 10));
+      }, 300);
+
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      // Fix: Support owner-locked files
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
       const newPdf = await PDFDocument.create();
       
       const copiedPages = await newPdf.copyPages(pdfDoc, keepIndices);
@@ -148,12 +161,19 @@ const DeletePages: React.FC = () => {
       
       const pdfBytes = await newPdf.save();
       
+      clearInterval(progressInterval);
+      setProgress(100);
+
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing PDF", error);
-      alert("Failed to delete pages.");
+      if (error.message && (error.message.includes('encrypted') || error.message.includes('password'))) {
+          alert("This file is password protected. Please unlock it first.");
+      } else {
+          alert("Failed to delete pages.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -165,6 +185,7 @@ const DeletePages: React.FC = () => {
     setFile(null);
     setPages([]);
     setDeleteRange('');
+    setProgress(0);
   };
 
   // 1. Upload Screen
@@ -329,6 +350,18 @@ const DeletePages: React.FC = () => {
                     <HelpCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                  </div>
             </div>
+
+            {processing && (
+                <div className="w-full max-w-[200px] mt-2">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Processing...</span>
+                        <span>{progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div className="bg-brand-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+            )}
 
             <button 
                 onClick={handleApply}

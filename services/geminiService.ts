@@ -3,8 +3,23 @@ import { GoogleGenAI } from "@google/genai";
 let ai: GoogleGenAI | null = null;
 
 export const initializeGemini = () => {
-  if (process.env.API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  let apiKey = '';
+  
+  // Robust check for process.env to prevent browser crashes
+  try {
+    if (typeof process !== 'undefined' && process && process.env) {
+      apiKey = process.env.API_KEY || '';
+    }
+  } catch (e) {
+    console.warn("Unable to access process.env API key", e);
+  }
+  
+  if (apiKey) {
+    try {
+        ai = new GoogleGenAI({ apiKey });
+    } catch (e) {
+        console.error("Failed to initialize GoogleGenAI", e);
+    }
   }
 };
 

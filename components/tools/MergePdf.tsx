@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileUp, ChevronDown, Check, Loader2, FileText, Trash2, ArrowUp, ArrowDown, Download, RefreshCw, Plus } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 interface UploadedFile {
   id: string;
@@ -56,7 +57,8 @@ const MergePdf: React.FC = () => {
       for (let i = 0; i < totalFiles; i++) {
         const uploadedFile = files[i];
         const arrayBuffer = await uploadedFile.file.arrayBuffer();
-        const pdf = await PDFDocument.load(arrayBuffer);
+        // Fix: Support owner-locked files by passing empty password
+        const pdf = await PDFDocument.load(arrayBuffer, { password: '' } as any);
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => mergedPdf.addPage(page));
         
@@ -73,7 +75,7 @@ const MergePdf: React.FC = () => {
 
     } catch (error) {
       console.error("Merge error:", error);
-      alert("Failed to merge PDFs. Please ensure all files are valid PDFs.");
+      alert("Failed to merge PDFs. One of the files might be password protected with a User Password. Please unlock it first.");
     } finally {
       setIsProcessing(false);
     }
@@ -165,6 +167,8 @@ const MergePdf: React.FC = () => {
   // 2. Organize View
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+        {isProcessing && <ProcessingOverlay status="Merging PDF Files..." progress={progress} />}
+        
         {/* Top Header */}
         <div className="bg-white border-b border-gray-200 py-4 px-6 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm sticky top-[60px] z-30">
             <h2 className="text-xl font-bold text-gray-800">Merge PDF files</h2>
@@ -234,30 +238,12 @@ const MergePdf: React.FC = () => {
         {/* Bottom Bar */}
         <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-40">
             <div className="max-w-md mx-auto">
-                {isProcessing && (
-                    <div className="mb-3">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Merging files...</span>
-                            <span>{progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-brand-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                        </div>
-                    </div>
-                )}
                 <button 
                     onClick={handleMerge}
                     disabled={isProcessing}
                     className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-bold py-4 rounded-lg shadow-md flex items-center justify-center text-lg transition-colors"
                 >
-                    {isProcessing ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                            Processing...
-                        </>
-                    ) : (
-                        'Merge PDF files'
-                    )}
+                    Merge PDF files
                 </button>
             </div>
         </div>

@@ -18,8 +18,8 @@ const UnlockPdf: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setStep('password');
-      setError(null);
       setPassword('');
+      setError(null);
     }
   };
 
@@ -30,7 +30,7 @@ const UnlockPdf: React.FC = () => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // Try to load with password
+      // Try to load with provided password
       const pdfDoc = await PDFDocument.load(arrayBuffer, { password: password } as any);
       
       // If successful, save without encryption
@@ -42,7 +42,7 @@ const UnlockPdf: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       setStep('password');
-      // Check if error is specifically about bad password
+      // Naive error check, in real app better to check error code/type
       if (err.message && (err.message.toLowerCase().includes('password') || err.message.toLowerCase().includes('encrypted'))) {
          setError("Incorrect password. Please try again.");
       } else {
@@ -83,7 +83,7 @@ const UnlockPdf: React.FC = () => {
         <div className="mt-16 max-w-2xl text-center">
             <h3 className="font-bold text-gray-700 mb-2">How to unlock PDF</h3>
             <p className="text-sm text-gray-500">
-                Upload your password-protected PDF. If the file is encrypted, you will be prompted to enter the password. Once unlocked, you can download a version without restrictions.
+                Upload your password-protected PDF. Enter the password to verify you have the right to access the file. Once unlocked, you can download a version without restrictions.
             </p>
         </div>
       </div>
@@ -93,13 +93,17 @@ const UnlockPdf: React.FC = () => {
   if (step === 'password' || step === 'processing') {
       return (
           <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-24 px-4 font-sans">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Enter Password</h2>
-              <p className="text-gray-500 mb-8">This document is encrypted.</p>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                  {step === 'processing' ? 'Processing...' : 'Enter Password'}
+              </h2>
+              <p className="text-gray-500 mb-8">
+                  {step === 'processing' ? 'Unlocking document...' : 'This document is encrypted.'}
+              </p>
 
               <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-md w-full">
                   <div className="flex items-center justify-center mb-6">
                       <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center">
-                          <Lock className="w-8 h-8" />
+                          {step === 'processing' ? <Loader2 className="w-8 h-8 animate-spin" /> : <Lock className="w-8 h-8" />}
                       </div>
                   </div>
                   
@@ -120,13 +124,15 @@ const UnlockPdf: React.FC = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter PDF Password"
-                          className="w-full border border-gray-300 rounded-md py-3 pl-4 pr-12 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                          disabled={step === 'processing'}
+                          className="w-full border border-gray-300 rounded-md py-3 pl-4 pr-12 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none disabled:bg-gray-50"
                           onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                       />
                       <button 
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          disabled={step === 'processing'}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                       >
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>

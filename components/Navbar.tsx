@@ -6,18 +6,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { ToolCategory, NavProps } from '../types';
 import LanguageModal from './LanguageModal';
 
-const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
-  const { themeColor, setThemeColor } = useTheme();
-  const { t } = useLanguage();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [langModalOpen, setLangModalOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  // Helper to find category by title
-  const getCategory = (title: string): ToolCategory | undefined => 
-    TOOL_CATEGORIES.find(c => c.title === title);
-
-  // Helper to resolve translated text for a category/tool
+const CategoryList = ({ category, onToolClick, t }: { category: ToolCategory | undefined, onToolClick: (id: string, e: React.MouseEvent) => void, t: any }) => {
+  if (!category) return null;
+  
   const getCatTitle = (key: string) => {
     const map: Record<string, string> = {
       'MOST POPULAR': 'cat.popular',
@@ -32,6 +23,42 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
     };
     return t(map[key] || key);
   };
+
+  return (
+    <div className="mb-6 break-inside-avoid">
+      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2 mb-3">
+        {getCatTitle(category.title)}
+      </h3>
+      <ul className="space-y-2">
+        {category.items.map((item) => (
+          <li key={item.id}>
+            <a 
+              href="#" 
+              onClick={(e) => onToolClick(item.id, e)}
+              className="flex items-center text-gray-600 hover:text-brand-600 group/item transition-colors"
+            >
+              <item.icon className={`w-4 h-4 mr-2 ${item.color || 'text-gray-400'} flex-shrink-0`} />
+              <span className="text-sm font-medium group-hover:text-brand-600">
+                {t(`tool.${item.id}.title`, item.title)}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
+  const { themeColor, setThemeColor } = useTheme();
+  const { t } = useLanguage();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [langModalOpen, setLangModalOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Helper to find category by title
+  const getCategory = (title: string): ToolCategory | undefined => 
+    TOOL_CATEGORIES.find(c => c.title === title);
 
   const handleToolClick = (toolId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,50 +106,23 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
     setIsDropdownOpen(false); // Close mega menu
   };
 
-  const CategoryList = ({ category }: { category: ToolCategory | undefined }) => {
-    if (!category) return null;
-    return (
-      <div className="mb-6 break-inside-avoid">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2 mb-3">
-          {getCatTitle(category.title)}
-        </h3>
-        <ul className="space-y-2">
-          {category.items.map((item) => (
-            <li key={item.id}>
-              <a 
-                href="#" 
-                onClick={(e) => handleToolClick(item.id, e)}
-                className="flex items-center text-gray-600 hover:text-brand-600 group/item transition-colors"
-              >
-                <item.icon className={`w-4 h-4 mr-2 ${item.color || 'text-gray-400'} flex-shrink-0`} />
-                <span className="text-sm font-medium group-hover:text-brand-600">
-                  {t(`tool.${item.id}.title`, item.title)}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
   return (
     <>
-    <nav className="bg-white py-0 border-b border-gray-100 sticky top-0 z-50 shadow-sm font-sans">
-      <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 h-[60px]">
+    <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-md rounded-b-2xl border-b border-gray-100 transition-all font-sans">
+      <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 h-[70px]">
         {/* Logo and Main Nav */}
-        <div className="flex items-center gap-6 h-full">
+        <div className="flex items-center gap-8 h-full">
           <div 
             className="flex items-center space-x-2 cursor-pointer flex-shrink-0"
             onClick={() => onNavigate('home')}
           >
-            <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-xl">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-200">
               T
             </div>
-            <span className="text-xl font-bold text-gray-700 tracking-tight">Toolazon</span>
+            <span className="text-2xl font-bold text-gray-800 tracking-tight">Toolazon</span>
           </div>
           
-          <div className="hidden md:flex items-center h-full space-x-1 text-sm font-medium text-gray-600">
+          <div className="hidden md:flex items-center h-full space-x-2 text-sm font-medium text-gray-600">
             {NAV_LINKS.map((link) => {
               const linkLabel = link.name === 'All Tools' ? t('nav.all_tools') :
                                 link.name === 'Compress' ? t('nav.compress') :
@@ -141,7 +141,7 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                     onMouseLeave={() => setIsDropdownOpen(false)}
                   >
                     <button 
-                        className={`flex items-center px-4 py-2 group-hover:bg-gray-50 rounded-md transition-colors font-semibold ${isDropdownOpen ? 'text-brand-600' : 'text-gray-700'}`}
+                        className={`flex items-center px-4 py-2 group-hover:bg-gray-50/80 rounded-lg transition-colors font-semibold ${isDropdownOpen ? 'text-brand-600' : 'text-gray-700'}`}
                     >
                       {linkLabel}
                       <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
@@ -149,22 +149,22 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                     
                     {/* Mega Menu - Controlled by State */}
                     {isDropdownOpen && (
-                      <div className="absolute top-full left-0 pt-0 w-[750px] lg:w-[960px] block z-50">
-                        <div className="bg-white rounded-b-lg shadow-xl border border-gray-100 p-6 lg:p-8 grid grid-cols-4 gap-4 lg:gap-8 max-h-[85vh] overflow-y-auto">
-                          <div className="col-span-1"><CategoryList category={getCategory('MOST POPULAR')} /></div>
+                      <div className="absolute top-[60px] left-0 pt-2 w-[750px] lg:w-[960px] block z-50">
+                        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 grid grid-cols-4 gap-8 max-h-[85vh] overflow-y-auto">
+                          <div className="col-span-1"><CategoryList category={getCategory('MOST POPULAR')} onToolClick={handleToolClick} t={t} /></div>
                           <div className="col-span-1">
-                            <CategoryList category={getCategory('MERGE')} />
-                            <CategoryList category={getCategory('SPLIT')} />
+                            <CategoryList category={getCategory('MERGE')} onToolClick={handleToolClick} t={t} />
+                            <CategoryList category={getCategory('SPLIT')} onToolClick={handleToolClick} t={t} />
                           </div>
                           <div className="col-span-1">
-                            <CategoryList category={getCategory('EDIT & SIGN')} />
-                            <CategoryList category={getCategory('COMPRESS & SCANS')} />
-                            <CategoryList category={getCategory('SECURITY')} />
+                            <CategoryList category={getCategory('EDIT & SIGN')} onToolClick={handleToolClick} t={t} />
+                            <CategoryList category={getCategory('COMPRESS & SCANS')} onToolClick={handleToolClick} t={t} />
+                            <CategoryList category={getCategory('SECURITY')} onToolClick={handleToolClick} t={t} />
                           </div>
                           <div className="col-span-1">
-                            <CategoryList category={getCategory('CONVERT FROM PDF')} />
-                            <CategoryList category={getCategory('CONVERT TO PDF')} />
-                            <CategoryList category={getCategory('OTHERS')} />
+                            <CategoryList category={getCategory('CONVERT FROM PDF')} onToolClick={handleToolClick} t={t} />
+                            <CategoryList category={getCategory('CONVERT TO PDF')} onToolClick={handleToolClick} t={t} />
+                            <CategoryList category={getCategory('OTHERS')} onToolClick={handleToolClick} t={t} />
                           </div>
                         </div>
                       </div>
@@ -188,7 +188,7 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                       else if (link.name === 'Edit') onNavigate('pdf-editor');
                       else onNavigate('home');
                   }}
-                  className="px-3 py-2 text-gray-700 hover:text-brand-600 hover:bg-gray-50 rounded-md transition-colors font-medium whitespace-nowrap"
+                  className="px-4 py-2 text-gray-600 hover:text-brand-600 hover:bg-gray-50/80 rounded-lg transition-colors font-medium whitespace-nowrap"
                 >
                   {linkLabel}
                 </a>
@@ -205,27 +205,29 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
             <button 
               onClick={() => setLangModalOpen(true)}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
                <Globe className="w-5 h-5" />
             </button>
-            <input 
-              type="color" 
-              value={themeColor}
-              onChange={(e) => setThemeColor(e.target.value)}
-              title="Choose theme color"
-              className="ml-1 w-6 h-6 rounded-full overflow-hidden border-none p-0 cursor-pointer"
-            />
+            <div className="relative w-6 h-6 rounded-full overflow-hidden shadow-sm cursor-pointer hover:scale-110 transition-transform">
+                <input 
+                type="color" 
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                title="Choose theme color"
+                className="absolute inset-[-50%] w-[200%] h-[200%] cursor-pointer border-none p-0 m-0"
+                />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-lg py-4 px-4 flex flex-col space-y-2 z-40 max-h-[80vh] overflow-y-auto">
+        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl py-4 px-4 flex flex-col space-y-2 z-40 max-h-[85vh] overflow-y-auto rounded-b-2xl">
            {NAV_LINKS.filter(l => l.name !== 'All Tools').map((link) => {
               const linkLabel = link.name === 'Compress' ? t('nav.compress') :
                                 link.name === 'Edit' ? t('nav.edit') :
@@ -248,18 +250,18 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                      else if (link.name === 'Edit') onNavigate('pdf-editor');
                      else onNavigate('home');
                    }}
-                   className="py-2 px-4 hover:bg-gray-50 rounded-md text-gray-700 font-medium"
+                   className="py-3 px-4 hover:bg-gray-50 rounded-xl text-gray-700 font-medium"
                  >
                    {linkLabel}
                  </a>
               );
            })}
-           <div className="border-t border-gray-100 my-2 pt-2">
-             <p className="px-4 text-xs font-bold text-gray-400 uppercase mb-2">{t('nav.all_tools')}</p>
+           <div className="border-t border-gray-100 my-2 pt-4">
+             <p className="px-4 text-xs font-bold text-gray-400 uppercase mb-3">{t('nav.all_tools')}</p>
              {TOOL_CATEGORIES.map(cat => (
-               <div key={cat.title} className="mb-4 px-4">
-                 <p className="text-xs font-bold text-brand-600 mb-1">{getCatTitle(cat.title)}</p>
-                 <div className="pl-2 border-l-2 border-gray-100 space-y-1">
+               <div key={cat.title} className="mb-6 px-4">
+                 <p className="text-xs font-bold text-brand-600 mb-2">{t(cat.title === 'MOST POPULAR' ? 'cat.popular' : 'cat.others')}</p>
+                 <div className="pl-3 border-l-2 border-gray-100 space-y-2">
                    {cat.items.slice(0, 4).map(item => (
                      <a 
                        key={item.id} 
