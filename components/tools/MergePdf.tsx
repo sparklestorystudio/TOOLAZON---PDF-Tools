@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { FileUp, ChevronDown, Check, Loader2, FileText, Trash2, ArrowUp, ArrowDown, Download, RefreshCw, Plus } from 'lucide-react';
+import { FileUp, ChevronDown, Check, Loader2, FileText, Trash2, ArrowUp, ArrowDown, Download, RefreshCw, Plus, GripVertical } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ProcessingOverlay from '../ProcessingOverlay';
@@ -15,6 +15,7 @@ const MergePdf: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +44,31 @@ const MergePdf: React.FC = () => {
 
   const removeFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  // Drag and Drop Handlers
+  const onDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    // Optional: set custom drag image if needed
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault(); // Essential to allow drop
+    if (draggedIndex === null) return;
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const onDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const newFiles = [...files];
+    const [movedFile] = newFiles.splice(draggedIndex, 1);
+    newFiles.splice(dropIndex, 0, movedFile);
+    
+    setFiles(newFiles);
+    setDraggedIndex(null);
   };
 
   const handleMerge = async () => {
@@ -194,9 +220,24 @@ const MergePdf: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {files.map((fileData, index) => (
-                    <div key={fileData.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative group hover:shadow-md transition-shadow">
-                        <div className="h-32 bg-gray-50 rounded mb-3 flex items-center justify-center border border-gray-100">
+                    <div 
+                        key={fileData.id} 
+                        className={`bg-white p-4 rounded-lg shadow-sm border relative group transition-all cursor-move
+                            ${draggedIndex === index 
+                                ? 'border-brand-500 shadow-lg opacity-50 scale-95' 
+                                : 'border-gray-200 hover:shadow-md hover:border-brand-200'
+                            }`}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, index)}
+                        onDragOver={(e) => onDragOver(e, index)}
+                        onDrop={(e) => onDrop(e, index)}
+                    >
+                        <div className="h-32 bg-gray-50 rounded mb-3 flex items-center justify-center border border-gray-100 relative">
                              <FileText className="w-12 h-12 text-gray-300" />
+                             
+                             <div className="absolute top-2 left-2 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <GripVertical className="w-4 h-4" />
+                             </div>
                         </div>
                         <p className="text-sm font-medium text-gray-700 truncate mb-1" title={fileData.file.name}>{fileData.file.name}</p>
                         <p className="text-xs text-gray-400">{(fileData.file.size / 1024 / 1024).toFixed(2)} MB</p>

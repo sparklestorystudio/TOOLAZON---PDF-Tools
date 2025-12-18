@@ -1,43 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 
-let ai: GoogleGenAI | null = null;
-
-export const initializeGemini = () => {
-  if (ai) return;
-
-  let apiKey = '';
-  
-  // Robust check for process.env to prevent browser crashes if process is not defined
-  try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process && process.env) {
-        // @ts-ignore
-        apiKey = process.env.API_KEY || '';
-    }
-  } catch (e) {
-    console.warn("Unable to access process.env API key", e);
-  }
-  
-  if (apiKey) {
-    try {
-        ai = new GoogleGenAI({ apiKey });
-    } catch (e) {
-        console.error("Failed to initialize GoogleGenAI", e);
-    }
-  }
-};
-
+/**
+ * Helper to interact with Gemini API following the @google/genai guidelines.
+ */
 export const getGeminiResponse = async (userMessage: string): Promise<string> => {
-  initializeGemini();
-  
-  if (!ai) {
-    return "I'm sorry, I can't connect to the AI service right now. Please check your API key configuration.";
-  }
+  // Initialize GoogleGenAI with named parameter using process.env.API_KEY directly
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
-    const model = ai.models;
-    const response = await model.generateContent({
-      model: 'gemini-2.5-flash',
+    // Use ai.models.generateContent directly with recommended model name
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
       contents: userMessage,
       config: {
         systemInstruction: `You are a helpful assistant for the Toolazon PDF tools website. 
@@ -48,6 +21,7 @@ export const getGeminiResponse = async (userMessage: string): Promise<string> =>
       }
     });
 
+    // Access response.text as a property directly
     return response.text || "I'm sorry, I couldn't generate a response.";
   } catch (error) {
     console.error("Gemini API Error:", error);

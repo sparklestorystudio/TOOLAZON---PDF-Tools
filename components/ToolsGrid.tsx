@@ -93,6 +93,10 @@ const ToolsGrid: React.FC<NavProps> = ({ onNavigate }) => {
       onNavigate('unlock-pdf');
     } else if (toolId === 'protect') {
       onNavigate('protect-pdf');
+    } else if (toolId === 'grayscale') {
+      onNavigate('grayscale-pdf');
+    } else if (toolId === 'flatten') {
+      onNavigate('flatten-pdf');
     } else {
       onNavigate('home'); 
     }

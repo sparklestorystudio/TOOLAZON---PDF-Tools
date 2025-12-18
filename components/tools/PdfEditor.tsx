@@ -3,7 +3,7 @@ import {
   FileUp, ChevronDown, Check, Loader2, Type, Link as LinkIcon, Image as ImageIcon, 
   PenTool, Eraser, Undo, Trash2, RotateCw, RotateCcw, PlusCircle,
   Download, RefreshCw, X, Square, Circle, Minus, Save, Bold, Italic,
-  ZoomIn, ZoomOut, Highlighter, MousePointer2, CheckSquare, Move, Copy, Palette, Plus, Hand, Search, ArrowLeft, ArrowRight
+  ZoomIn, ZoomOut, Highlighter, MousePointer2, CheckSquare, Move, Copy, Palette, Plus, Hand, Search, ArrowLeft, ArrowRight, Underline
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
@@ -59,7 +59,7 @@ interface TextChange {
   fontStyle?: 'normal' | 'italic';
   color?: string;
   textDecoration?: 'none' | 'underline';
-  isNew?: boolean; // Flag to trigger auto-edit
+  isNew?: boolean; 
 }
 
 interface PageState {
@@ -103,14 +103,19 @@ const hexToRgb = (hex?: string) => {
     return rgb(r, g, b);
 };
 
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 // --- SUB-COMPONENTS ---
 
 const FloatingToolbar: React.FC<{ 
-    currentStyle: { weight: string, style: string, color: string, size: number, family: string },
+    currentStyle: { weight: string, style: string, decoration: string, color: string, size: number, family: string },
     onStyleChange: (key: string, val: any) => void,
     onDelete: () => void,
-    onDuplicate: () => void
-}> = ({ currentStyle, onStyleChange, onDelete, onDuplicate }) => {
+    onDuplicate: () => void,
+    isNearTop?: boolean
+}> = ({ currentStyle, onStyleChange, onDelete, onDuplicate, isNearTop }) => {
     const handleMouseDown = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
@@ -122,59 +127,65 @@ const FloatingToolbar: React.FC<{
 
     return (
         <div 
-            className="absolute bottom-[110%] left-0 z-50 flex items-center gap-1 bg-white rounded-lg shadow-xl border border-blue-200 p-1 min-w-[320px] pointer-events-auto"
+            className={`absolute ${isNearTop ? 'top-[100%] mt-2' : 'bottom-[100%] mb-2'} left-0 z-[100] flex items-center gap-1 bg-white rounded-lg shadow-2xl border border-gray-200 p-1.5 min-w-max pointer-events-auto ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100`}
             onMouseDown={handleMouseDown} 
         >
             <button 
                 onClick={() => onStyleChange('weight', currentStyle.weight === 'bold' ? 'normal' : 'bold')}
-                className={`p-1.5 rounded hover:bg-blue-50 text-blue-600 ${currentStyle.weight === 'bold' ? 'bg-blue-100' : ''}`}
+                className={`p-1.5 rounded hover:bg-gray-100 text-gray-700 transition-colors ${currentStyle.weight === 'bold' ? 'bg-sky-50 text-sky-600' : ''}`}
                 title="Bold"
             >
                 <Bold className="w-4 h-4" />
             </button>
             <button 
                 onClick={() => onStyleChange('style', currentStyle.style === 'italic' ? 'normal' : 'italic')}
-                className={`p-1.5 rounded hover:bg-blue-50 text-blue-600 ${currentStyle.style === 'italic' ? 'bg-blue-100' : ''}`}
+                className={`p-1.5 rounded hover:bg-gray-100 text-gray-700 transition-colors ${currentStyle.style === 'italic' ? 'bg-sky-50 text-sky-600' : ''}`}
                 title="Italic"
             >
                 <Italic className="w-4 h-4" />
             </button>
+            <button 
+                onClick={() => onStyleChange('decoration', currentStyle.decoration === 'underline' ? 'none' : 'underline')}
+                className={`p-1.5 rounded hover:bg-gray-100 text-gray-700 transition-colors ${currentStyle.decoration === 'underline' ? 'bg-sky-50 text-sky-600' : ''}`}
+                title="Underline"
+            >
+                <Underline className="w-4 h-4" />
+            </button>
             
-            <div className="h-4 w-px bg-gray-200 mx-1"></div>
+            <div className="h-5 w-px bg-gray-200 mx-1.5"></div>
 
-            <div className="flex items-center text-blue-600 hover:bg-blue-50 rounded px-1 cursor-pointer">
-                <Type className="w-4 h-4 mr-1" />
-                <div className="flex items-center border border-gray-200 rounded mx-1 bg-white">
+            <div className="flex items-center text-gray-700 bg-gray-50 rounded-md px-1 py-0.5 border border-gray-100">
+                <div className="flex items-center">
                     <button 
                         onMouseDown={handleMouseDown}
-                        onClick={() => onStyleChange('size', Math.max(4, currentStyle.size - 2))}
-                        className="p-1 hover:bg-gray-100 text-gray-600 rounded-l"
+                        onClick={() => onStyleChange('size', Math.max(4, currentStyle.size - 1))}
+                        className="p-1 hover:bg-white rounded transition-colors"
                     >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3 h-3 text-gray-400" />
                     </button>
                     <input 
                         type="number" 
                         value={Math.round(currentStyle.size)} 
                         onChange={(e) => onStyleChange('size', Number(e.target.value))}
-                        className="w-8 text-xs text-center border-none focus:ring-0 p-0"
+                        className="w-10 text-[11px] font-bold text-center border-none focus:ring-0 p-0 bg-transparent"
                         onMouseDown={(e) => e.stopPropagation()}
                     />
                     <button 
                         onMouseDown={handleMouseDown}
-                        onClick={() => onStyleChange('size', Math.min(100, currentStyle.size + 2))}
-                        className="p-1 hover:bg-gray-100 text-gray-600 rounded-r"
+                        onClick={() => onStyleChange('size', Math.min(144, currentStyle.size + 1))}
+                        className="p-1 hover:bg-white rounded transition-colors"
                     >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3 h-3 text-gray-400" />
                     </button>
                 </div>
             </div>
 
-            <div className="h-4 w-px bg-gray-200 mx-1"></div>
+            <div className="h-5 w-px bg-gray-200 mx-1.5"></div>
 
             <select 
                 value={currentStyle.family}
                 onChange={(e) => onStyleChange('family', e.target.value)}
-                className="text-xs text-blue-600 bg-transparent border-none focus:ring-0 max-w-[100px] cursor-pointer"
+                className="text-xs font-medium text-gray-700 bg-gray-50 border border-gray-100 rounded-md focus:ring-0 px-2 py-1 max-w-[120px] cursor-pointer"
                 onMouseDown={(e) => e.stopPropagation()} 
             >
                 <option value="Helvetica">Helvetica</option>
@@ -182,20 +193,20 @@ const FloatingToolbar: React.FC<{
                 <option value="Courier New">Courier</option>
             </select>
 
-            <div className="h-4 w-px bg-gray-200 mx-1"></div>
+            <div className="h-5 w-px bg-gray-200 mx-1.5"></div>
 
-            <div className="relative group">
+            <div className="relative group/color">
                 <button 
-                    className="p-1.5 rounded hover:bg-blue-50 text-blue-600 flex items-center"
+                    className="p-1.5 rounded hover:bg-gray-100 flex items-center"
                 >
-                    <Palette className="w-4 h-4" />
-                    <ChevronDown className="w-3 h-3 ml-0.5" />
+                    <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: currentStyle.color }}></div>
+                    <ChevronDown className="w-3 h-3 ml-1 text-gray-400" />
                 </button>
-                <div className="hidden group-hover:grid absolute top-full left-0 bg-white shadow-lg border border-gray-100 p-2 gap-1 grid-cols-4 z-50 w-32">
-                    {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map(c => (
+                <div className="hidden group-hover/color:grid absolute top-full left-0 bg-white shadow-2xl border border-gray-200 p-2.5 gap-1.5 grid-cols-4 z-[110] w-36 mt-1 rounded-lg animate-in fade-in slide-in-from-top-1">
+                    {['#000000', '#FFFFFF', '#666666', '#FF0000', '#0000FF', '#008000', '#FFFF00', '#FFA500'].map(c => (
                         <button 
                             key={c} 
-                            className="w-6 h-6 rounded-full border border-gray-200" 
+                            className="w-6 h-6 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm" 
                             style={{ backgroundColor: c }}
                             onClick={() => onStyleChange('color', c)}
                         />
@@ -203,16 +214,9 @@ const FloatingToolbar: React.FC<{
                 </div>
             </div>
 
-            <button className="p-1.5 rounded hover:bg-blue-50 text-blue-600" title="Link">
-                <LinkIcon className="w-4 h-4" />
-            </button>
+            <div className="h-5 w-px bg-gray-200 mx-1.5"></div>
 
-            <div className="h-4 w-px bg-gray-200 mx-1"></div>
-
-            <button className="p-1.5 rounded hover:bg-blue-50 text-blue-600 cursor-move" title="Move">
-                <Move className="w-4 h-4" />
-            </button>
-            <button onClick={onDuplicate} className="p-1.5 rounded hover:bg-blue-50 text-blue-600" title="Duplicate">
+            <button onClick={onDuplicate} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Duplicate">
                 <Copy className="w-4 h-4" />
             </button>
             <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 text-red-500" title="Delete">
@@ -229,8 +233,10 @@ const EditableTextItem: React.FC<{
     scale: number,
     onSave: (val: Partial<TextChange>) => void,
     onDuplicate: () => void,
+    isSelected: boolean,
+    onSelect: () => void,
     autoFocus?: boolean
-}> = ({ item, text, change, scale, onSave, onDuplicate, autoFocus }) => {
+}> = ({ item, text, change, scale, onSave, onDuplicate, isSelected, onSelect, autoFocus }) => {
     const [isEditing, setIsEditing] = useState(autoFocus || false);
     const [val, setVal] = useState(text);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -246,9 +252,16 @@ const EditableTextItem: React.FC<{
         }
     }, [autoFocus]);
 
+    useEffect(() => {
+        if (!isSelected && isEditing) {
+            handleBlur();
+        }
+    }, [isSelected]);
+
     const styleState = {
         weight: change?.fontWeight || 'normal',
         style: change?.fontStyle || 'normal',
+        decoration: change?.textDecoration || 'none',
         color: change?.color || '#000000',
         size: change?.fontSize || item.fontSize, 
         family: change?.fontFamily || item.fontFamily
@@ -267,10 +280,12 @@ const EditableTextItem: React.FC<{
             adjustHeight();
             if (inputRef.current) {
                 inputRef.current.focus();
-                // inputRef.current.select(); // Don't always select all, maybe just focus
+                // Move cursor to end
+                inputRef.current.selectionStart = inputRef.current.value.length;
+                inputRef.current.selectionEnd = inputRef.current.value.length;
             }
         }
-    }, [isEditing, val, styleState.size]);
+    }, [isEditing, styleState.size]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -291,7 +306,6 @@ const EditableTextItem: React.FC<{
 
     const handleBlur = () => {
         setIsEditing(false);
-        // Clear new flag
         if (change?.isNew) {
             onSave({ isNew: false, newText: val });
         } else if (val !== text) {
@@ -303,6 +317,7 @@ const EditableTextItem: React.FC<{
         const updates: any = {};
         if (key === 'weight') updates.fontWeight = value;
         if (key === 'style') updates.fontStyle = value;
+        if (key === 'decoration') updates.textDecoration = value;
         if (key === 'color') updates.color = value;
         if (key === 'size') updates.fontSize = value;
         if (key === 'family') updates.fontFamily = value;
@@ -317,89 +332,97 @@ const EditableTextItem: React.FC<{
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') handleBlur();
+        if (e.key === 'Enter' && !e.shiftKey && !change?.originalText.includes('\n')) {
+            e.preventDefault();
+            handleBlur();
+        }
     };
 
     const left = (item.viewportX || 0) * scale;
     const top = (item.viewportY || 0) * scale - (styleState.size * scale);
+    
+    // Check if item is near top of page to flip toolbar
+    const isNearTop = top < 60;
 
     const cssStyle: React.CSSProperties = {
-        position: 'absolute',
-        left: left,
-        top: top,
         fontSize: `${styleState.size * scale}px`,
         fontFamily: styleState.family === 'Helvetica' ? 'sans-serif' : (styleState.family.includes('Times') ? 'serif' : 'monospace'),
         fontWeight: styleState.weight,
         fontStyle: styleState.style,
+        textDecoration: styleState.decoration,
         color: styleState.color,
         lineHeight: 1.2,
-        transformOrigin: '0 0',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
         cursor: 'text',
+        outline: 'none',
+        border: 'none',
+        background: 'transparent',
+        padding: 0,
+        margin: 0,
     };
 
-    if (isEditing) {
-        return (
-            <div 
-                ref={containerRef} 
-                style={{ position: 'absolute', left, top, zIndex: 100, pointerEvents: 'auto' }}
-                onMouseDown={(e) => e.stopPropagation()} 
-            >
+    const shouldCover = change !== undefined;
+
+    return (
+        <div 
+            ref={containerRef}
+            onClick={(e) => { 
+                e.stopPropagation(); 
+                onSelect(); 
+            }}
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+            }}
+            className={`absolute group pointer-events-auto rounded-sm ${isSelected && !isEditing ? 'ring-1 ring-sky-500 bg-sky-500/5' : isEditing ? 'z-[100]' : 'hover:ring-1 hover:ring-sky-300'}`}
+            style={{
+                left: left,
+                top: top,
+                zIndex: isSelected || isEditing ? 100 : 20,
+                minWidth: Math.max(30, item.width * scale) + 'px',
+                minHeight: (item.height || 20) * scale + 'px',
+                backgroundColor: shouldCover ? '#ffffff' : 'transparent',
+                transition: 'background-color 0.1s ease',
+            }}
+        >
+            {isSelected && !isEditing && (
                 <FloatingToolbar 
                     currentStyle={styleState}
                     onStyleChange={handleStyleChange}
                     onDelete={handleDelete}
                     onDuplicate={onDuplicate}
+                    isNearTop={isNearTop}
                 />
-                <textarea 
-                    ref={inputRef}
-                    value={val}
-                    onChange={(e) => setVal(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    style={{ 
-                        ...cssStyle, 
-                        position: 'static', 
-                        background: 'white', 
-                        border: '1px solid #3b82f6', 
-                        minWidth: Math.max(20, item.width * scale) + 'px',
-                        minHeight: item.height * scale + 'px',
-                        padding: 0,
-                        margin: 0,
-                        outline: 'none',
-                        overflow: 'hidden',
-                        resize: 'none',
-                        userSelect: 'text',
-                        WebkitUserSelect: 'text'
-                    }}
-                    className="select-text"
-                />
-            </div>
-        );
-    }
-
-    // Always opaque white if it's a managed change, to cover the original PDF text
-    const shouldCover = change !== undefined;
-
-    return (
-        <div 
-            onClick={(e) => { 
-                e.stopPropagation(); 
-                setIsEditing(true); 
-            }}
-            className="group absolute pointer-events-auto hover:bg-blue-50 hover:outline hover:outline-1 hover:outline-blue-200 rounded-sm"
-            style={{
-                ...cssStyle,
-                width: 'auto', 
-                minWidth: item.width * scale,
-                height: 'auto',
-                minHeight: item.height * scale,
-                backgroundColor: shouldCover ? '#ffffff' : 'transparent',
-            }}
-            title="Click to edit text"
-        >
-            <span>
-                {text}
-            </span>
+            )}
+            
+            {isEditing ? (
+                <div className="relative w-full h-full min-w-[50px] bg-white ring-2 ring-sky-400 p-0.5 rounded shadow-lg overflow-visible z-[101]">
+                    <textarea 
+                        ref={inputRef}
+                        value={val}
+                        onChange={(e) => {
+                            setVal(e.target.value);
+                            adjustHeight();
+                        }}
+                        onKeyDown={handleKeyDown}
+                        style={{ 
+                            ...cssStyle, 
+                            width: '100%',
+                            minHeight: '1.2em',
+                            background: 'white', 
+                            overflow: 'hidden',
+                            resize: 'none',
+                            display: 'block',
+                        }}
+                        className="select-text"
+                    />
+                </div>
+            ) : (
+                <div style={cssStyle} className="px-0.5">
+                    {text}
+                </div>
+            )}
         </div>
     );
 };
@@ -423,6 +446,12 @@ const AnnotationItem: React.FC<{
     }, [isEditing]);
 
     useEffect(() => {
+        if (!isSelected && isEditing) {
+            setIsEditing(false);
+        }
+    }, [isSelected]);
+
+    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsEditing(false);
@@ -443,8 +472,8 @@ const AnnotationItem: React.FC<{
         width: (ann.width || 0) * scale, 
         height: (ann.height || 0) * scale,
         transform: `rotate(${ann.rotation || 0}deg)`,
-        border: isSelected ? '1px solid #3b82f6' : 'none',
-        zIndex: 40
+        border: isSelected && !isEditing ? '1px solid #3b82f6' : 'none',
+        zIndex: isSelected ? 50 : 40
     };
 
     if (ann.type === 'text') {
@@ -454,84 +483,98 @@ const AnnotationItem: React.FC<{
         const styleState = {
             weight: ann.fontWeight || 'normal',
             style: ann.fontStyle || 'normal',
+            decoration: ann.textDecoration || 'none',
             color: ann.color || '#000000',
             size: ann.fontSize || 14,
             family: ann.fontFamily || 'Helvetica'
         };
+
+        const isNearTop = (ann.y * scale) < 60;
 
         const handleStyleChange = (key: string, value: any) => {
             if (!onUpdate) return;
             const updates: any = {};
             if (key === 'weight') updates.fontWeight = value;
             if (key === 'style') updates.fontStyle = value;
+            if (key === 'decoration') updates.textDecoration = value;
             if (key === 'color') updates.color = value;
             if (key === 'size') updates.fontSize = value;
             if (key === 'family') updates.fontFamily = value;
             onUpdate(updates);
         };
 
-        if (isEditing && onUpdate) {
-            return (
-                <div 
-                    ref={containerRef}
-                    style={{ position: 'absolute', left: ann.x * scale, top: ann.y * scale, zIndex: 100, pointerEvents: 'auto' }}
-                    onMouseDown={(e) => e.stopPropagation()} 
-                >
+        return (
+            <div 
+                ref={containerRef}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    onSelect(); 
+                }}
+                onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                }}
+                style={{ 
+                    position: 'absolute',
+                    left: ann.x * scale,
+                    top: ann.y * scale,
+                    zIndex: isSelected || isEditing ? 100 : 40,
+                }}
+            >
+                {isSelected && !isEditing && (
                     <FloatingToolbar 
                         currentStyle={styleState}
                         onStyleChange={handleStyleChange}
                         onDelete={() => onUpdate({ content: '' })} 
                         onDuplicate={() => {}} 
+                        isNearTop={isNearTop}
                     />
-                    <textarea 
-                        ref={textareaRef}
-                        value={ann.content || ''}
-                        onChange={(e) => onUpdate({ content: e.target.value })}
-                        style={{
-                            fontSize: `${fontSize}px`,
-                            fontFamily,
-                            fontWeight: ann.fontWeight,
-                            fontStyle: ann.fontStyle,
-                            color: ann.color,
-                            background: 'white',
-                            border: '1px solid #3b82f6',
-                            outline: 'none',
-                            padding: 0,
-                            margin: 0,
+                )}
+                
+                {isEditing ? (
+                    <div className="bg-white ring-2 ring-sky-400 p-0.5 rounded shadow-lg">
+                        <textarea 
+                            ref={textareaRef}
+                            value={ann.content || ''}
+                            onChange={(e) => onUpdate({ content: e.target.value })}
+                            style={{
+                                fontSize: `${fontSize}px`,
+                                fontFamily,
+                                fontWeight: ann.fontWeight,
+                                fontStyle: ann.fontStyle,
+                                textDecoration: ann.textDecoration,
+                                color: ann.color,
+                                background: 'white',
+                                outline: 'none',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                overflow: 'hidden',
+                                resize: 'none',
+                                minWidth: '20px',
+                                width: 'max-content'
+                            }}
+                        />
+                    </div>
+                ) : (
+                    <div 
+                        style={{ 
+                            fontSize: `${fontSize}px`, 
+                            fontFamily, 
+                            fontWeight: ann.fontWeight, 
+                            fontStyle: ann.fontStyle, 
+                            textDecoration: ann.textDecoration, 
+                            color: ann.color, 
+                            cursor: 'text',
                             whiteSpace: 'pre-wrap',
-                            overflow: 'hidden',
-                            resize: 'none',
-                            minWidth: '20px',
-                            width: 'max-content'
+                            border: isSelected ? '1px solid transparent' : 'none',
                         }}
-                    />
-                </div>
-            );
-        }
-
-        return (
-            <div 
-                onClick={(e) => { 
-                    e.stopPropagation(); 
-                    onSelect(); 
-                    setIsEditing(true); 
-                }} 
-                style={{ 
-                    ...style, 
-                    width: 'auto', 
-                    height: 'auto', 
-                    fontSize: `${fontSize}px`, 
-                    fontFamily, 
-                    fontWeight: ann.fontWeight, 
-                    fontStyle: ann.fontStyle, 
-                    textDecoration: ann.textDecoration, 
-                    color: ann.color, 
-                    cursor: 'text',
-                    whiteSpace: 'pre-wrap'
-                }}
-                className="hover:border hover:border-blue-200 p-0.5 rounded-sm"
-            >
-                {ann.content}
+                        className="hover:ring-1 hover:ring-sky-200 p-0.5 rounded-sm"
+                    >
+                        {ann.content}
+                    </div>
+                )}
             </div>
         );
     }
@@ -629,29 +672,22 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
         const pdf = await loadingTask.promise;
 
         const pdfPage = await pdf.getPage(page.index + 1);
-
-        // Store original unscaled dimensions for layout calculation
         const unscaledViewport = pdfPage.getViewport({ scale: 1, rotation: page.rotation });
         setOriginalDims({ width: unscaledViewport.width, height: unscaledViewport.height });
 
-        // Calculate actual render viewport
         const viewport = pdfPage.getViewport({ scale: page.scale, rotation: page.rotation });
         
-        // Double buffering to avoid flicker
         const offscreen = document.createElement('canvas');
         offscreen.width = viewport.width;
         offscreen.height = viewport.height;
         const ctx = offscreen.getContext('2d');
-        
         if (!ctx) return;
         
-        // Render to offscreen canvas
         await pdfPage.render({
             canvasContext: ctx,
             viewport: viewport,
         }).promise;
         
-        // Extract Text for Editing Overlay
         const textContent = await pdfPage.getTextContent();
         const items = textContent.items.map((item: any, i: number) => {
             const tx = item.transform;
@@ -672,7 +708,6 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
 
         setTextItems(items);
 
-        // Swap contents to visible canvas
         const canvas = canvasRef.current;
         if (canvas) {
             canvas.width = viewport.width;
@@ -687,15 +722,11 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
     };
 
     renderPage();
-
     return () => { isMounted = false; };
   }, [file, page.index, page.rotation, page.scale, page.isInserted]);
 
-  // Calculate container size using original dimensions to allow immediate CSS scaling
   const width = originalDims ? originalDims.width * page.scale : (612 * page.scale);
   const height = originalDims ? originalDims.height * page.scale : (792 * page.scale);
-
-  // Filter matches for this page
   const pageMatches = searchResults.filter(m => m.pageIndex === index);
 
   return (
@@ -704,37 +735,29 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      className={`cursor-${activeTool === 'hand' ? 'grab' : 'crosshair'}`}
+      className={`bg-white shadow-xl ${activeTool === 'hand' ? 'cursor-grab' : 'cursor-crosshair'}`}
     >
       <canvas 
         ref={canvasRef} 
-        className="block pointer-events-none shadow-sm origin-top-left" 
-        style={{ width: '100%', height: '100%' }} // Allow CSS to scale existing canvas content during zoom
+        className="block pointer-events-none origin-top-left" 
+        style={{ width: '100%', height: '100%' }} 
       />
       
-      {/* Clickable Text Overlay Layer */}
-      {!page.isInserted && originalDims && textItems.map(item => {
-          // If this text is already converted to a TextChange, do not render the overlay
+      {/* Invisible layer for detecting existing PDF text - only shown in cursor/text mode */}
+      {!page.isInserted && originalDims && (activeTool === 'cursor' || activeTool === 'text') && textItems.map(item => {
           if (page.textChanges[item.id]) return null;
 
           const pageHeight = originalDims.height;
-          // Calculate screen position
           const fontSize = item.height * page.scale;
           const left = item.x * page.scale;
-          // PDF Y is bottom-up. Convert to top-down. 
-          // item.y is usually baseline. Bounding box top is approx y + height?
-          // Actually PDF.js transform y is usually bottom-left of the glyph bounding box.
-          // CSS top = (PageHeight - Y - Height) * scale
           const top = (pageHeight - item.y - item.height) * page.scale;
           const w = item.width * page.scale;
 
           return (
               <div
                   key={item.id}
-                  onClick={(e) => {
+                  onDoubleClick={(e) => {
                       e.stopPropagation();
-                      if (activeTool !== 'cursor' && activeTool !== 'text') return;
-                      
                       const change: TextChange = {
                           id: item.id,
                           originalText: item.str,
@@ -751,23 +774,24 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
                           isNew: true
                       };
                       onEdit(change);
+                      onSelect(item.id);
                   }}
                   style={{
                       position: 'absolute',
                       left,
                       top,
-                      width: w,
-                      height: fontSize * 1.3, // slightly taller for easier clicking
+                      width: Math.max(10, w),
+                      height: Math.max(10, fontSize * 1.2),
                       cursor: 'text',
                       zIndex: 10,
                   }}
-                  className="hover:bg-blue-200/20 hover:outline hover:outline-1 hover:outline-blue-300"
-                  title="Click to edit text"
+                  className="hover:bg-sky-500/10 hover:ring-1 hover:ring-sky-400 transition-all rounded-sm"
+                  title="Double-click to edit"
               />
           );
       })}
       
-      {/* Search Highlights */}
+      {/* Highlights */}
       {pageMatches.map(match => (
           <div 
             key={match.id}
@@ -794,6 +818,8 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
             scale={page.scale}
             onSave={(updates) => onEdit({ ...change, ...updates })}
             onDuplicate={() => onDuplicate(change)}
+            isSelected={selectedId === change.id}
+            onSelect={() => onSelect(change.id)}
             autoFocus={change.isNew}
          />
       ))}
@@ -810,7 +836,7 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       ))}
 
       {isDrawing && (
-         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 50 }}>
+         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 150 }}>
             {(activeTool === 'annotate-pen' || activeTool === 'annotate-highlight' || activeTool === 'sign') && currentPath.length > 1 && (
                 <path 
                     d={`M ${currentPath.map(p => `${p.x * page.scale} ${p.y * page.scale}`).join(' L ')}`}
@@ -852,8 +878,6 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
   );
 };
 
-// --- MAIN COMPONENT ---
-
 const PdfEditor: React.FC = () => {
   const { t } = useLanguage();
   
@@ -862,13 +886,12 @@ const PdfEditor: React.FC = () => {
   const [step, setStep] = useState<'upload' | 'editor' | 'success'>('upload');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   
-  // Editor State
+  // State
   const [pages, setPages] = useState<PageState[]>([]);
   const [history, setHistory] = useState<PageState[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [activeTool, setActiveTool] = useState<ToolType>('cursor');
   
-  // Text Tool Settings
   const [textSettings, setTextSettings] = useState({
       fontSize: 14,
       fontFamily: 'Helvetica',
@@ -877,43 +900,36 @@ const PdfEditor: React.FC = () => {
       fontStyle: 'normal' as 'normal' | 'italic'
   });
 
-  // Shape Tool Settings
   const [shapeSettings, setShapeSettings] = useState({
       strokeColor: '#000000',
       strokeWidth: 2
   });
   
-  // Search State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [matchCase, setMatchCase] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
 
-  // Selection
   const [selectedPageIdx, setSelectedPageIdx] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  
-  // Status
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   
-  // Pan State
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
-  
-  // Input Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // Drawing State
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{x: number, y: number}[]>([]); 
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null); 
 
-  // --- HISTORY MANAGEMENT ---
+  // --- ACTIONS ---
 
   const updatePages = (newPages: PageState[], addToHistoryStack = true) => {
       setPages(newPages);
@@ -934,8 +950,6 @@ const PdfEditor: React.FC = () => {
       }
   };
 
-  // --- SEARCH LOGIC ---
-
   const performSearch = async () => {
     if (!file || !findText) return;
     setSearchLoading(true);
@@ -947,6 +961,10 @@ const PdfEditor: React.FC = () => {
       const pdf = await loadingTask.promise;
       const matches: SearchMatch[] = [];
 
+      const pattern = wholeWord ? `\\b${escapeRegExp(findText)}\\b` : escapeRegExp(findText);
+      const flags = matchCase ? 'g' : 'gi';
+      const regex = new RegExp(pattern, flags);
+
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const { width, height } = page.getViewport({ scale: 1 });
@@ -955,34 +973,29 @@ const PdfEditor: React.FC = () => {
         textContent.items.forEach((item: any) => {
           if ('str' in item) {
             const text = item.str;
-            const lowerText = text.toLowerCase();
-            const lowerFind = findText.toLowerCase();
-            let startIndex = 0;
-            
-            while ((startIndex = lowerText.indexOf(lowerFind, startIndex)) > -1) {
+            regex.lastIndex = 0;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
                const fontSize = Math.sqrt(item.transform[0]*item.transform[0] + item.transform[1]*item.transform[1]);
-               
                const fullWidth = item.width;
                const charWidth = fullWidth / text.length;
-               
+               const startIndex = match.index;
+               const matchLength = match[0].length;
                const matchX = item.transform[4] + (startIndex * charWidth);
-               const actualMatchWidth = charWidth * findText.length;
-
+               const actualMatchWidth = charWidth * matchLength;
                const pdfY = item.transform[5];
                const appY = height - pdfY - fontSize * 0.8; 
                
                matches.push({
                  id: Math.random().toString(),
                  pageIndex: i - 1, 
-                 text: item.str.substr(startIndex, findText.length),
+                 text: match[0],
                  x: matchX,
                  y: appY,
                  width: actualMatchWidth,
                  height: fontSize,
                  fontSize: fontSize
                });
-               
-               startIndex += findText.length;
             }
           }
         });
@@ -1041,7 +1054,6 @@ const PdfEditor: React.FC = () => {
 
   const performReplaceAll = () => {
       const newPages = [...pages];
-      
       searchResults.forEach(match => {
           const whiteoutAnn: Annotation = {
             id: Math.random().toString(),
@@ -1064,13 +1076,10 @@ const PdfEditor: React.FC = () => {
           };
           newPages[match.pageIndex].annotations.push(whiteoutAnn, textAnn);
       });
-      
       updatePages(newPages);
       setSearchResults([]);
       setCurrentMatchIndex(0);
   };
-
-  // --- FILE HANDLING ---
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -1098,7 +1107,7 @@ const PdfEditor: React.FC = () => {
         newPages.push({
           index: i - 1,
           rotation: 0,
-          scale: 1.5, // Default scale increased
+          scale: 1.5, 
           annotations: [],
           textChanges: {},
         });
@@ -1120,8 +1129,6 @@ const PdfEditor: React.FC = () => {
       setLoading(false);
     }
   };
-
-  // --- ACTIONS ---
 
   const insertPage = (index: number) => {
       const newPages = [...pages];
@@ -1180,11 +1187,6 @@ const PdfEditor: React.FC = () => {
       }
   };
 
-  const getSelectedAnnotation = () => {
-      if (selectedPageIdx === null || !selectedId) return null;
-      return pages[selectedPageIdx].annotations.find(a => a.id === selectedId);
-  };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
           const file = e.target.files[0];
@@ -1240,9 +1242,7 @@ const PdfEditor: React.FC = () => {
       if (e.ctrlKey) {
           e.preventDefault();
           const deltaY = -e.deltaY;
-          const sensitivity = 0.002; 
-          const zoomChange = deltaY * sensitivity;
-
+          const zoomChange = deltaY * 0.002;
           const newPages = pages.map(p => {
               let newScale = p.scale * (1 + zoomChange);
               newScale = Math.max(0.2, Math.min(5.0, newScale));
@@ -1392,9 +1392,7 @@ const PdfEditor: React.FC = () => {
       setProcessing(true);
       try {
           const arrayBuffer = await file.arrayBuffer();
-          // Fix: Support owner-locked files by passing empty password
           const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
-
           const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
           const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
           const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
@@ -1415,10 +1413,8 @@ const PdfEditor: React.FC = () => {
           
           for (let i = 0; i < pages.length; i++) {
               const pageState = pages[i];
-              
               let pdfPage;
               let height;
-              
               if (pageState.isInserted) {
                   pdfPage = newPdf.addPage([612, 792]);
                   height = 792;
@@ -1427,14 +1423,11 @@ const PdfEditor: React.FC = () => {
                   pdfPage = newPdf.addPage(copiedPage);
                   height = pdfPage.getSize().height;
               }
-
               const currentRotation = pdfPage.getRotation().angle;
               pdfPage.setRotation(degrees(currentRotation + pageState.rotation));
 
               Object.values(pageState.textChanges).forEach((change: TextChange) => {
-                   if (change.newText !== change.originalText || change.fontWeight || change.fontStyle || change.color || change.fontSize || change.isNew) {
-                       // Only redraw if changed or new
-                       // For existing text edits, whiteout original
+                   if (change.newText !== change.originalText || change.fontWeight || change.fontStyle || change.textDecoration || change.color || change.fontSize || change.isNew) {
                        if (!change.isNew || (change.isNew && change.newText !== change.originalText)) {
                            pdfPage.drawRectangle({
                                x: change.x,
@@ -1444,7 +1437,6 @@ const PdfEditor: React.FC = () => {
                                color: rgb(1,1,1)
                            });
                        }
-
                        if (change.newText && change.newText.trim() !== '') {
                            pdfPage.drawText(change.newText, {
                                x: change.x,
@@ -1453,32 +1445,42 @@ const PdfEditor: React.FC = () => {
                                font: getFont(change.fontFamily, change.fontWeight, change.fontStyle),
                                color: hexToRgb(change.color || '#000000'),
                            });
+                           if (change.textDecoration === 'underline') {
+                               const width = getFont(change.fontFamily, change.fontWeight, change.fontStyle).widthOfTextAtSize(change.newText, change.fontSize);
+                               pdfPage.drawLine({
+                                   start: { x: change.x, y: change.y - 2 },
+                                   end: { x: change.x + width, y: change.y - 2 },
+                                   thickness: 1,
+                                   color: hexToRgb(change.color || '#000000'),
+                               });
+                           }
                        }
                    }
               });
 
               for (const ann of pageState.annotations) {
                   const annColor = hexToRgb(ann.color);
-                  
                   if (ann.type === 'text' && ann.content) {
+                      const font = getFont(ann.fontFamily, ann.fontWeight, ann.fontStyle);
+                      const size = ann.fontSize || 14;
                       pdfPage.drawText(ann.content, {
-                          x: ann.x,
-                          y: height - ann.y - (ann.fontSize || 14),
-                          size: ann.fontSize || 14,
-                          font: getFont(ann.fontFamily, ann.fontWeight, ann.fontStyle),
-                          color: annColor,
+                          x: ann.x, y: height - ann.y - size,
+                          size: size, font: font, color: annColor,
                       });
-                  }
-                  else if (ann.type === 'whiteout') {
+                      if (ann.textDecoration === 'underline') {
+                           const width = font.widthOfTextAtSize(ann.content, size);
+                           pdfPage.drawLine({
+                               start: { x: ann.x, y: height - ann.y - size - 2 },
+                               end: { x: ann.x + width, y: height - ann.y - size - 2 },
+                               thickness: 1, color: annColor,
+                           });
+                      }
+                  } else if (ann.type === 'whiteout') {
                        pdfPage.drawRectangle({
-                           x: ann.x,
-                           y: height - ann.y - (ann.height || 20),
-                           width: ann.width,
-                           height: ann.height,
-                           color: rgb(1, 1, 1),
+                           x: ann.x, y: height - ann.y - (ann.height || 20),
+                           width: ann.width, height: ann.height, color: rgb(1, 1, 1),
                        });
-                  }
-                  else if (ann.type === 'image' && ann.dataUrl) {
+                  } else if (ann.type === 'image' && ann.dataUrl) {
                       const imgBytes = await fetch(ann.dataUrl).then(res => res.arrayBuffer());
                       let image;
                       if (ann.dataUrl.startsWith('data:image/png')) {
@@ -1489,64 +1491,44 @@ const PdfEditor: React.FC = () => {
                       const dims = image.scale(1);
                       const w = ann.width || dims.width;
                       const h = ann.height || dims.height;
-
                       pdfPage.drawImage(image, {
-                          x: ann.x,
-                          y: height - ann.y - h,
-                          width: w,
-                          height: h,
-                          rotate: degrees(ann.rotation || 0)
+                          x: ann.x, y: height - ann.y - h,
+                          width: w, height: h, rotate: degrees(ann.rotation || 0)
                       });
-                  }
-                  else if ((ann.type === 'path' || ann.type === 'highlight') && ann.points && ann.points.length > 1) {
+                  } else if ((ann.type === 'path' || ann.type === 'highlight') && ann.points && ann.points.length > 1) {
                       for(let j=0; j<ann.points.length-1; j++) {
                            pdfPage.drawLine({
                                start: { x: ann.points[j].x, y: height - ann.points[j].y },
                                end: { x: ann.points[j+1].x, y: height - ann.points[j+1].y },
-                               thickness: ann.strokeWidth || 2,
-                               color: annColor,
+                               thickness: ann.strokeWidth || 2, color: annColor,
                                opacity: ann.type === 'highlight' ? 0.3 : 1
                            });
                       }
-                  }
-                  else if (ann.type === 'line' && ann.points && ann.points.length > 1) {
+                  } else if (ann.type === 'line' && ann.points && ann.points.length > 1) {
                         pdfPage.drawLine({
                            start: { x: ann.points[0].x, y: height - ann.points[0].y },
                            end: { x: ann.points[1].x, y: height - ann.points[1].y },
-                           thickness: ann.strokeWidth || 2,
-                           color: annColor,
+                           thickness: ann.strokeWidth || 2, color: annColor,
                        });
-                  }
-                  else if (ann.type === 'rect') {
+                  } else if (ann.type === 'rect') {
                       pdfPage.drawRectangle({
-                          x: ann.x,
-                          y: height - ann.y - (ann.height || 0),
-                          width: ann.width,
-                          height: ann.height,
-                          borderColor: annColor,
-                          borderWidth: ann.strokeWidth || 2,
-                          color: undefined, 
+                          x: ann.x, y: height - ann.y - (ann.height || 0),
+                          width: ann.width, height: ann.height,
+                          borderColor: annColor, borderWidth: ann.strokeWidth || 2,
                       });
-                  }
-                  else if (ann.type === 'circle') {
+                  } else if (ann.type === 'circle') {
                       const rx = (ann.width || 0) / 2;
                       const ry = (ann.height || 0) / 2;
                       pdfPage.drawEllipse({
-                          x: ann.x + rx,
-                          y: height - (ann.y + ry),
-                          xScale: rx,
-                          yScale: ry,
-                          borderColor: annColor,
+                          x: ann.x + rx, y: height - (ann.y + ry),
+                          xScale: rx, yScale: ry, borderColor: annColor,
                           borderWidth: ann.strokeWidth || 2,
-                          color: undefined
                       });
-                  }
-                  else if (ann.type === 'form-check') {
+                  } else if (ann.type === 'form-check') {
                        pdfPage.drawText('✓', {
                            x: ann.x, y: height - ann.y - 14, size: 20, font: helvetica, color: annColor
                        });
-                  }
-                  else if (ann.type === 'form-cross') {
+                  } else if (ann.type === 'form-cross') {
                        pdfPage.drawText('✕', {
                            x: ann.x, y: height - ann.y - 14, size: 20, font: helvetica, color: annColor
                        });
@@ -1580,7 +1562,6 @@ const PdfEditor: React.FC = () => {
       setResultUrl(null);
   };
 
-  // ... (Remainder of file is identical)
   const ToolbarButton = ({ 
       active, onClick, icon: Icon, label, dropdown, tooltip 
   }: { active?: boolean, onClick: () => void, icon: any, label: string, dropdown?: boolean, tooltip?: string }) => (
@@ -1588,208 +1569,184 @@ const PdfEditor: React.FC = () => {
           onClick={onClick}
           title={tooltip}
           className={`
-              flex items-center gap-2 px-4 py-2.5 rounded text-sm font-medium transition-colors border whitespace-nowrap
+              flex items-center gap-2 px-4 py-2.5 rounded text-sm font-semibold transition-all border whitespace-nowrap
               ${active 
-                  ? 'bg-sky-100 text-sky-600 border-sky-300' 
-                  : 'bg-white text-sky-600 border-transparent hover:bg-sky-50 hover:border-sky-200'
+                  ? 'bg-sky-100 text-sky-700 border-sky-300 shadow-sm' 
+                  : 'bg-white text-gray-600 border-transparent hover:bg-gray-50 hover:text-sky-600'
               }
           `}
       >
-          <Icon className="w-4 h-4 flex-shrink-0" />
+          <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-sky-600' : 'text-gray-400 group-hover:text-sky-500'}`} />
           <span>{label}</span>
-          {dropdown && <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />}
+          {dropdown && <ChevronDown className={`w-3 h-3 ml-0.5 opacity-50 transition-transform ${active ? 'rotate-180' : ''}`} />}
       </button>
   );
 
   const renderSejdaToolbar = () => (
-      <div className="bg-white border-b border-gray-200 sticky top-[60px] z-40 shadow-sm">
-          <div className="max-w-[1400px] mx-auto px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-white border-b border-gray-200 sticky top-[60px] z-40 shadow-sm py-2">
+          {/* Change: Removed overflow-x-auto to prevent clipping of absolute dropdowns. Added flex-wrap for responsiveness. */}
+          <div className="max-w-[1440px] mx-auto px-6 flex items-center gap-2 flex-wrap min-h-[44px]">
               
-              <ToolbarButton 
-                  icon={Hand} label="Pan" active={activeTool === 'hand'} 
-                  onClick={() => setActiveTool(activeTool === 'hand' ? 'cursor' : 'hand')} 
-                  tooltip="Pan tool (drag to scroll)"
-              />
+              {/* NAVIGATION GROUP */}
+              <div className="flex bg-gray-50/80 rounded-xl p-1 border border-gray-100 items-center">
+                  <ToolbarButton 
+                      icon={MousePointer2} label="Select" active={activeTool === 'cursor'} 
+                      onClick={() => setActiveTool('cursor')} 
+                      tooltip="Select and move items"
+                  />
+                  <ToolbarButton 
+                      icon={Hand} label="Pan" active={activeTool === 'hand'} 
+                      onClick={() => setActiveTool('hand')} 
+                      tooltip="Pan tool (drag to scroll)"
+                  />
+              </div>
 
-              <div className="h-6 w-px bg-gray-200 mx-1"></div>
+              <div className="hidden sm:block h-6 w-px bg-gray-200 mx-2"></div>
 
-              <ToolbarButton 
-                  icon={Type} label="Text" active={activeTool === 'text'} 
-                  onClick={() => setActiveTool(activeTool === 'text' ? 'cursor' : 'text')} 
-                  dropdown
-                  tooltip="Insert text into PDF"
-              />
-              
-              <ToolbarButton 
-                  icon={LinkIcon} label="Links" active={activeTool === 'link'} 
-                  onClick={() => setActiveTool(activeTool === 'link' ? 'cursor' : 'link')} 
-                  tooltip="Create a clickable link"
-              />
-              
-              <div className="relative group">
-                  <ToolbarButton icon={CheckSquare} label="Forms" dropdown onClick={() => {}} active={activeTool.startsWith('form')} tooltip="Insert form symbols" />
-                  <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-100 rounded-lg p-2 hidden group-hover:block min-w-[140px] z-50">
-                      <button onClick={() => setActiveTool('form-check')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><Check className="w-4 h-4"/> Checkmark</button>
-                      <button onClick={() => setActiveTool('form-cross')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><X className="w-4 h-4"/> Cross</button>
+              {/* CONTENT GROUP */}
+              <div className="flex gap-1 items-center">
+                  <ToolbarButton 
+                      icon={Type} label="Text" active={activeTool === 'text'} 
+                      onClick={() => setActiveTool(activeTool === 'text' ? 'cursor' : 'text')} 
+                      tooltip="Insert text into PDF"
+                  />
+                  <ToolbarButton 
+                      icon={LinkIcon} label="Links" active={activeTool === 'link'} 
+                      onClick={() => setActiveTool(activeTool === 'link' ? 'cursor' : 'link')} 
+                      tooltip="Create a clickable link"
+                  />
+                  <div className="relative group">
+                      <ToolbarButton icon={ImageIcon} label="Images" dropdown onClick={() => {}} active={activeTool === 'image'} tooltip="Insert an image" />
+                      <div className="absolute top-full left-0 mt-1 bg-white shadow-xl border border-gray-100 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
+                           <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><FileUp className="w-4 h-4 text-sky-500"/> Upload Image</button>
+                      </div>
                   </div>
               </div>
 
-              <div className="relative group">
-                  <ToolbarButton icon={ImageIcon} label="Images" dropdown onClick={() => {}} active={activeTool === 'image'} tooltip="Insert an image" />
-                  <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-100 rounded-lg p-2 hidden group-hover:block min-w-[140px] z-50">
-                       <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><FileUp className="w-4 h-4"/> Upload Image</button>
+              <div className="hidden sm:block h-6 w-px bg-gray-200 mx-2"></div>
+
+              {/* FILL & SIGN GROUP */}
+              <div className="flex gap-1 items-center">
+                  <div className="relative group">
+                      <ToolbarButton icon={PenTool} label="Sign" dropdown onClick={() => {}} active={activeTool === 'sign'} tooltip="Sign document" />
+                       <div className="absolute top-full left-0 mt-1 bg-white shadow-xl border border-gray-100 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
+                           <button onClick={() => setActiveTool('sign')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><PenTool className="w-4 h-4 text-sky-500"/> New Signature</button>
+                       </div>
+                  </div>
+                  <div className="relative group">
+                      <ToolbarButton icon={CheckSquare} label="Forms" dropdown onClick={() => {}} active={activeTool.startsWith('form')} tooltip="Insert form symbols" />
+                      <div className="absolute top-full left-0 mt-1 bg-white shadow-xl border border-gray-100 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
+                          <button onClick={() => setActiveTool('form-check')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><Check className="w-4 h-4 text-green-500"/> Checkmark</button>
+                          <button onClick={() => setActiveTool('form-cross')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><X className="w-4 h-4 text-red-500"/> Cross</button>
+                      </div>
                   </div>
               </div>
-              <input type="file" ref={imageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
-              <div className="relative group">
-                  <ToolbarButton icon={PenTool} label="Sign" dropdown onClick={() => {}} active={activeTool === 'sign'} tooltip="Sign document" />
-                   <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-100 rounded-lg p-2 hidden group-hover:block min-w-[140px] z-50">
-                       <button onClick={() => setActiveTool('sign')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><PenTool className="w-4 h-4"/> New Signature</button>
-                   </div>
-              </div>
-              
-              <ToolbarButton 
-                  icon={Eraser} label="Whiteout" active={activeTool === 'whiteout'}
-                  onClick={() => setActiveTool(activeTool === 'whiteout' ? 'cursor' : 'whiteout')} 
-                  tooltip="Hide content with whiteout"
-              />
-              
-              <div className="relative group">
-                  <ToolbarButton icon={MousePointer2} label="Annotate" dropdown onClick={() => {}} active={activeTool.startsWith('annotate')} tooltip="Draw or highlight" />
-                  <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-100 rounded-lg p-2 hidden group-hover:block min-w-[140px] z-50">
-                      <button onClick={() => setActiveTool('annotate-highlight')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><Highlighter className="w-4 h-4 text-yellow-500"/> Highlight</button>
-                      <button onClick={() => setActiveTool('annotate-pen')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><PenTool className="w-4 h-4"/> Draw</button>
+              <div className="hidden sm:block h-6 w-px bg-gray-200 mx-2"></div>
+
+              {/* DRAW & MOD GROUP */}
+              <div className="flex gap-1 items-center">
+                  <ToolbarButton 
+                      icon={Eraser} label="Whiteout" active={activeTool === 'whiteout'}
+                      onClick={() => setActiveTool(activeTool === 'whiteout' ? 'cursor' : 'whiteout')} 
+                      tooltip="Hide content with whiteout"
+                  />
+                  <div className="relative group">
+                      <ToolbarButton icon={Highlighter} label="Annotate" dropdown onClick={() => {}} active={activeTool.startsWith('annotate')} tooltip="Draw or highlight" />
+                      <div className="absolute top-full left-0 mt-1 bg-white shadow-xl border border-gray-100 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
+                          <button onClick={() => setActiveTool('annotate-highlight')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><Highlighter className="w-4 h-4 text-yellow-500"/> Highlight</button>
+                          <button onClick={() => setActiveTool('annotate-pen')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><PenTool className="w-4 h-4 text-sky-500"/> Free Draw</button>
+                      </div>
+                  </div>
+                  <div className="relative group">
+                       <ToolbarButton icon={Square} label="Shapes" dropdown onClick={() => {}} active={activeTool.startsWith('shape')} tooltip="Insert shapes" />
+                       <div className="absolute top-full left-0 mt-1 bg-white shadow-xl border border-gray-100 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
+                           <button onClick={() => setActiveTool('shape-rect')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><Square className="w-4 h-4 text-sky-500"/> Rectangle</button>
+                           <button onClick={() => setActiveTool('shape-circle')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><Circle className="w-4 h-4 text-sky-500"/> Ellipse</button>
+                           <button onClick={() => setActiveTool('shape-line')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 rounded-lg text-sm text-gray-700 transition-colors"><Minus className="w-4 h-4 text-sky-500"/> Line</button>
+                       </div>
                   </div>
               </div>
+
+              <div className="hidden lg:block h-6 w-px bg-gray-200 mx-2"></div>
               
-              <div className="relative group">
-                   <ToolbarButton icon={Square} label="Shapes" dropdown onClick={() => {}} active={activeTool.startsWith('shape')} tooltip="Insert shapes" />
-                   <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-100 rounded-lg p-2 hidden group-hover:block min-w-[140px] z-50">
-                       <button onClick={() => setActiveTool('shape-rect')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><Square className="w-4 h-4"/> Rectangle</button>
-                       <button onClick={() => setActiveTool('shape-circle')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><Circle className="w-4 h-4"/> Ellipse</button>
-                       <button onClick={() => setActiveTool('shape-line')} className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 rounded text-sm text-gray-700"><Minus className="w-4 h-4"/> Line</button>
-                   </div>
-              </div>
-
-              <div className="h-6 w-px bg-gray-200 mx-1"></div>
-
               <ToolbarButton 
-                  icon={Search} label="Find & Replace" active={isSearchOpen}
+                  icon={Search} label="Find" active={isSearchOpen}
                   onClick={() => setIsSearchOpen(!isSearchOpen)} 
                   tooltip="Find and replace text"
               />
 
-              <div className="flex-1"></div>
+              <div className="flex-1 min-w-[20px]"></div>
               
-              <button 
-                onClick={undo} 
-                disabled={historyIndex <= 0} 
-                className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium text-sky-600 hover:bg-sky-50 disabled:opacity-50 disabled:hover:bg-transparent border border-sky-600 whitespace-nowrap"
-                title="Undo last action"
-              >
-                  <Undo className="w-4 h-4"/> Undo
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={undo} 
+                  disabled={historyIndex <= 0} 
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-sky-600 hover:bg-sky-50 disabled:opacity-30 border border-sky-100 whitespace-nowrap transition-all"
+                  title="Undo last action"
+                >
+                    <Undo className="w-4 h-4"/> Undo
+                </button>
+              </div>
           </div>
       </div>
   );
 
   const renderSearchPanel = () => {
       if (!isSearchOpen) return null;
-
-      const currentMatch = searchResults[currentMatchIndex];
-
       return (
-          <div className="absolute top-[130px] right-8 z-50 bg-white shadow-xl border border-gray-200 rounded-lg p-4 w-80 animate-in slide-in-from-top-2">
-              <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                      <Search className="w-4 h-4" /> Find & Replace
+          <div className="absolute top-[135px] right-8 z-50 bg-white shadow-2xl border border-gray-200 rounded-2xl p-6 w-85 animate-in slide-in-from-top-4">
+              <div className="flex justify-between items-center mb-5">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                      <Search className="w-4 h-4 text-sky-500" /> Find & Replace
                   </h3>
-                  <button onClick={() => setIsSearchOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={() => setIsSearchOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
                       <X className="w-4 h-4" />
                   </button>
               </div>
-              
-              <div className="space-y-3">
+              <div className="space-y-4">
                   <div>
                       <input 
                           type="text" 
                           placeholder="Find text..." 
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:border-sky-500 outline-none transition-all"
                           value={findText}
                           onChange={(e) => setFindText(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && performSearch()}
                       />
                   </div>
+                  <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500"/> Match case
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500"/> Whole words
+                      </label>
+                  </div>
                   <div>
                       <input 
                           type="text" 
                           placeholder="Replace with..." 
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:border-sky-500 outline-none transition-all"
                           value={replaceText}
                           onChange={(e) => setReplaceText(e.target.value)}
                       />
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                      <button 
-                          onClick={performSearch} 
-                          disabled={searchLoading}
-                          className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center"
-                      >
-                          {searchLoading && <Loader2 className="w-3 h-3 animate-spin mr-1" />} Find
+                  <div className="flex items-center justify-between pt-2">
+                      <button onClick={performSearch} disabled={searchLoading} className="bg-sky-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-sky-700 disabled:opacity-50 flex items-center shadow-lg shadow-sky-100 transition-all">
+                          {searchLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Find
                       </button>
-                      
                       {searchResults.length > 0 && (
-                          <div className="flex items-center gap-1 text-xs text-gray-600">
-                              <button 
-                                  onClick={() => {
-                                      setCurrentMatchIndex(prev => Math.max(0, prev - 1));
-                                      const prevIdx = Math.max(0, currentMatchIndex - 1);
-                                      const match = searchResults[prevIdx];
-                                      if (match) {
-                                          setSelectedPageIdx(match.pageIndex);
-                                          document.getElementById(`page-${match.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                      }
-                                  }}
-                                  className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                  <ArrowLeft className="w-3 h-3" />
-                              </button>
+                          <div className="flex items-center gap-3 text-xs font-black text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                              <button onClick={() => { setCurrentMatchIndex(prev => Math.max(0, prev - 1)); const p = searchResults[Math.max(0, currentMatchIndex - 1)]; if(p) { setSelectedPageIdx(p.pageIndex); document.getElementById(`page-${p.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-sky-600"><ArrowLeft className="w-4 h-4" /></button>
                               <span>{currentMatchIndex + 1} / {searchResults.length}</span>
-                              <button 
-                                  onClick={() => {
-                                      setCurrentMatchIndex(prev => Math.min(searchResults.length - 1, prev + 1));
-                                      const nextIdx = Math.min(searchResults.length - 1, currentMatchIndex + 1);
-                                      const match = searchResults[nextIdx];
-                                      if (match) {
-                                          setSelectedPageIdx(match.pageIndex);
-                                          document.getElementById(`page-${match.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                      }
-                                  }}
-                                  className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                  <ArrowRight className="w-3 h-3" />
-                              </button>
+                              <button onClick={() => { setCurrentMatchIndex(prev => Math.min(searchResults.length - 1, prev + 1)); const n = searchResults[Math.min(searchResults.length - 1, currentMatchIndex + 1)]; if(n) { setSelectedPageIdx(n.pageIndex); document.getElementById(`page-${n.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-sky-600"><ArrowRight className="w-4 h-4" /></button>
                           </div>
                       )}
                   </div>
-
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
-                      <button 
-                          onClick={performReplace}
-                          disabled={searchResults.length === 0}
-                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium disabled:opacity-50"
-                      >
-                          Replace
-                      </button>
-                      <button 
-                          onClick={performReplaceAll}
-                          disabled={searchResults.length === 0}
-                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium disabled:opacity-50"
-                      >
-                          Replace All
-                      </button>
+                  <div className="flex gap-2 pt-4 border-t border-gray-100">
+                      <button onClick={performReplace} disabled={searchResults.length === 0} className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-bold transition-all">Replace</button>
+                      <button onClick={performReplaceAll} disabled={searchResults.length === 0} className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-bold transition-all">Replace All</button>
                   </div>
               </div>
           </div>
@@ -1798,146 +1755,87 @@ const PdfEditor: React.FC = () => {
 
   const renderToolProperties = () => {
       if (activeTool !== 'text' && !activeTool.startsWith('shape-')) return null;
-      
       return (
-        <div className="bg-gray-100 border-b border-gray-200 py-2 flex justify-center z-30 shadow-inner overflow-x-auto no-scrollbar">
-            {activeTool === 'text' && (
-                <div className="flex items-center gap-3 bg-white px-4 py-1.5 rounded shadow-sm border border-gray-200 whitespace-nowrap">
-                    <span className="text-xs font-bold text-gray-500 uppercase mr-2 tracking-wide">Text Properties:</span>
-                    <select 
-                        value={textSettings.fontFamily}
-                        onChange={(e) => setTextSettings({...textSettings, fontFamily: e.target.value})}
-                        className="h-8 text-sm border border-gray-300 rounded px-2 focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none bg-white"
-                    >
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Times New Roman">Times</option>
-                        <option value="Courier New">Courier</option>
-                    </select>
-                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                    <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-8">
-                        <button 
-                            onClick={() => setTextSettings({...textSettings, fontSize: Math.max(6, textSettings.fontSize - 2)})}
-                            className="px-2 hover:bg-gray-50 border-r border-gray-200 text-gray-600"
-                        >
-                            <Minus className="w-3 h-3" />
-                        </button>
-                        <input 
-                            type="number" 
-                            value={textSettings.fontSize}
-                            onChange={(e) => setTextSettings({...textSettings, fontSize: Number(e.target.value)})}
-                            className="w-10 text-sm text-center focus:outline-none border-none p-0 h-full"
-                            min={6} max={100}
-                        />
-                        <button 
-                            onClick={() => setTextSettings({...textSettings, fontSize: Math.min(100, textSettings.fontSize + 2)})}
-                            className="px-2 hover:bg-gray-50 border-l border-gray-200 text-gray-600"
-                        >
-                            <Plus className="w-3 h-3" />
-                        </button>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                    <div className="relative group">
-                        <button 
-                            className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center transition-transform hover:scale-105"
-                            style={{ backgroundColor: textSettings.color }}
-                            title="Text Color"
-                        />
-                         <div className="hidden group-hover:grid absolute top-full left-0 bg-white shadow-lg border border-gray-100 p-2 gap-1 grid-cols-4 z-50 w-32 mt-2 rounded-lg">
-                            {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map(c => (
-                                <button 
-                                    key={c} 
-                                    className="w-6 h-6 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm" 
-                                    style={{ backgroundColor: c }}
-                                    onClick={() => setTextSettings({...textSettings, color: c})}
-                                />
-                            ))}
+        <div className="bg-gray-100/50 border-b border-gray-200 py-3 flex justify-center z-30 animate-in slide-in-from-top-1">
+            <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl shadow-xl border border-white/20 whitespace-nowrap ring-1 ring-black/5">
+                {activeTool === 'text' && (
+                    <>
+                        <div className="flex items-center gap-2 mr-2">
+                            <Palette className="w-4 h-4 text-gray-300" />
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Text Style</span>
                         </div>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                    <div className="flex bg-gray-50 rounded border border-gray-200">
-                        <button 
-                            onClick={() => setTextSettings({...textSettings, fontWeight: textSettings.fontWeight === 'bold' ? 'normal' : 'bold'})}
-                            className={`p-1.5 px-3 transition-colors border-r border-gray-200 ${textSettings.fontWeight === 'bold' ? 'bg-sky-100 text-sky-600 font-bold' : 'hover:bg-gray-100 text-gray-600'}`}
-                            title="Bold"
-                        >
-                            <Bold className="w-4 h-4" />
-                        </button>
-                        <button 
-                            onClick={() => setTextSettings({...textSettings, fontStyle: textSettings.fontStyle === 'italic' ? 'normal' : 'italic'})}
-                            className={`p-1.5 px-3 transition-colors ${textSettings.fontStyle === 'italic' ? 'bg-sky-100 text-sky-600 italic' : 'hover:bg-gray-100 text-gray-600'}`}
-                            title="Italic"
-                        >
-                            <Italic className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-            
-            {activeTool.startsWith('shape-') && (
-                <div className="flex items-center gap-3 bg-white px-4 py-1.5 rounded shadow-sm border border-gray-200 whitespace-nowrap">
-                    <span className="text-xs font-bold text-gray-500 uppercase mr-2 tracking-wide">Shape Properties:</span>
-                    <div className="relative group flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Color:</span>
-                        <button 
-                            className="w-6 h-6 rounded border border-gray-300 flex items-center justify-center"
-                            style={{ backgroundColor: shapeSettings.strokeColor }}
-                            title="Stroke Color"
-                        />
-                        <div className="hidden group-hover:grid absolute top-full left-0 bg-white shadow-lg border border-gray-100 p-2 gap-1 grid-cols-4 z-50 w-32 mt-2 rounded-lg">
-                            {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map(c => (
-                                <button 
-                                    key={c} 
-                                    className="w-6 h-6 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm" 
-                                    style={{ backgroundColor: c }}
-                                    onClick={() => setShapeSettings({...shapeSettings, strokeColor: c})}
-                                />
-                            ))}
+                        <select value={textSettings.fontFamily} onChange={(e) => setTextSettings({...textSettings, fontFamily: e.target.value})} className="h-10 text-sm font-semibold border-2 border-gray-50 rounded-xl px-3 bg-gray-50 focus:border-sky-500 outline-none transition-all">
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Courier New">Courier</option>
+                        </select>
+                        <div className="flex items-center border-2 border-gray-50 rounded-xl bg-gray-50 overflow-hidden h-10">
+                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.max(6, textSettings.fontSize - 1)})} className="px-3 hover:bg-white text-gray-400 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                            <input type="number" value={textSettings.fontSize} onChange={(e) => setTextSettings({...textSettings, fontSize: Number(e.target.value)})} className="w-12 text-xs font-black text-center bg-transparent border-none p-0 h-full" />
+                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.min(144, textSettings.fontSize + 1)})} className="px-3 hover:bg-white text-gray-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
                         </div>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Thickness:</span>
-                        <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-8">
-                            <button 
-                                onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.max(1, shapeSettings.strokeWidth - 1)})}
-                                className="px-2 hover:bg-gray-50 border-r border-gray-200 text-gray-600"
-                            >
-                                <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-8 text-sm text-center">{shapeSettings.strokeWidth}</span>
-                            <button 
-                                onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.min(20, shapeSettings.strokeWidth + 1)})}
-                                className="px-2 hover:bg-gray-50 border-l border-gray-200 text-gray-600"
-                            >
-                                <Plus className="w-3 h-3" />
-                            </button>
+                        <div className="relative group/cp">
+                            <button className="w-10 h-10 rounded-xl border-2 border-gray-50 flex items-center justify-center transition-all hover:scale-105 shadow-sm" style={{ backgroundColor: textSettings.color }} />
+                            <div className="hidden group-hover/cp:grid absolute top-full left-0 bg-white shadow-2xl border border-gray-100 p-4 gap-2 grid-cols-4 z-50 w-44 mt-3 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                                {['#000000', '#FFFFFF', '#666666', '#FF0000', '#0000FF', '#008000', '#FFFF00', '#FFA500'].map(c => (
+                                    <button key={c} className="w-8 h-8 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: c }} onClick={() => setTextSettings({...textSettings, color: c})} />
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                        <div className="flex bg-gray-50 rounded-xl border-2 border-gray-50 overflow-hidden">
+                            <button onClick={() => setTextSettings({...textSettings, fontWeight: textSettings.fontWeight === 'bold' ? 'normal' : 'bold'})} className={`h-10 w-11 flex items-center justify-center transition-all ${textSettings.fontWeight === 'bold' ? 'bg-sky-100 text-sky-700 shadow-inner' : 'text-gray-400 hover:bg-white'}`}><Bold className="w-4 h-4" /></button>
+                            <button onClick={() => setTextSettings({...textSettings, fontStyle: textSettings.fontStyle === 'italic' ? 'normal' : 'italic'})} className={`h-10 w-11 flex items-center justify-center transition-all ${textSettings.fontStyle === 'italic' ? 'bg-sky-100 text-sky-700 shadow-inner' : 'text-gray-400 hover:bg-white'}`}><Italic className="w-4 h-4" /></button>
+                        </div>
+                    </>
+                )}
+                {activeTool.startsWith('shape-') && (
+                    <>
+                        <div className="flex items-center gap-2 mr-2">
+                            <Palette className="w-4 h-4 text-gray-300" />
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Shape Style</span>
+                        </div>
+                        <div className="relative group/scp flex items-center gap-3">
+                            <button className="w-10 h-10 rounded-xl border-2 border-gray-50 transition-all hover:scale-105 shadow-sm" style={{ backgroundColor: shapeSettings.strokeColor }} />
+                            <div className="hidden group-hover/scp:grid absolute top-full left-0 bg-white shadow-2xl border border-gray-100 p-4 gap-2 grid-cols-4 z-50 w-44 mt-3 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                                {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map(c => (
+                                    <button key={c} className="w-8 h-8 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: c }} onClick={() => setShapeSettings({...shapeSettings, strokeColor: c})} />
+                                ))}
+                            </div>
+                        </div>
+                        <div className="h-6 w-px bg-gray-100"></div>
+                        <div className="flex items-center border-2 border-gray-50 rounded-xl bg-gray-50 overflow-hidden h-10">
+                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.max(1, shapeSettings.strokeWidth - 1)})} className="px-3 hover:bg-white text-gray-400 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                            <span className="w-10 text-xs font-black text-center text-gray-700">{shapeSettings.strokeWidth}</span>
+                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.min(50, shapeSettings.strokeWidth + 1)})} className="px-3 hover:bg-white text-gray-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
       );
   };
 
-  // --- VIEWS ---
-
   if (step === 'upload') {
      return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">Online PDF Editor</h1>
-            <p className="text-gray-500 text-lg mb-10 text-center">Edit PDF files for free. Fill & sign PDF.</p>
+            <h1 className="text-4xl font-black text-gray-800 mb-3 text-center tracking-tight">Online PDF Editor</h1>
+            <p className="text-gray-500 text-lg mb-10 text-center font-medium">Professional editing, signing, and filling for free.</p>
             <div className="w-full max-w-xl">
-                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md flex items-center justify-center gap-3 text-xl group transition-all">
-                    <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-7 rounded-2xl shadow-xl shadow-brand-200 flex items-center justify-center gap-4 text-2xl group transition-all transform hover:-translate-y-1">
+                    <FileUp className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
                     Upload PDF file
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
             </div>
-            <div className="mt-16 max-w-2xl text-center">
-                <h3 className="font-bold text-gray-700 mb-2">How to edit a PDF file online</h3>
-                <p className="text-sm text-gray-500">
-                    Upload your file. Click on existing text to edit it, or use the toolbar to insert new text, images, and signatures. Click 'Apply changes' to download.
-                </p>
+            <div className="mt-20 max-w-3xl text-center grid md:grid-cols-2 gap-8">
+                <div className="text-left bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <h3 className="font-black text-gray-800 mb-3 flex items-center gap-2"><Type className="w-5 h-5 text-brand-500" /> Edit Existing Text</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed font-medium">Double-click any text on the page to modify it directly. Change fonts, colors, and styles instantly.</p>
+                </div>
+                <div className="text-left bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <h3 className="font-black text-gray-800 mb-3 flex items-center gap-2"><PenTool className="w-5 h-5 text-brand-500" /> Fill & Sign</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed font-medium">Add signatures, checkmarks, and custom images. Perfect for processing forms and contracts online.</p>
+                </div>
             </div>
         </div>
      );
@@ -1946,17 +1844,17 @@ const PdfEditor: React.FC = () => {
   if (step === 'success' && resultUrl) {
       return (
         <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Your document is ready</h2>
-            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Check className="w-8 h-8" />
+            <h2 className="text-3xl font-black text-gray-800 mb-8 tracking-tight">Your document is ready</h2>
+            <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-gray-200 border border-gray-100 max-w-2xl w-full text-center">
+                <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-in zoom-in duration-300">
+                    <Check className="w-12 h-12" />
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href={resultUrl} download={`edited_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2">
-                        <Download className="w-5 h-5" /> Download
+                    <a href={resultUrl} download={`edited_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-4 px-10 rounded-2xl shadow-xl shadow-brand-100 flex items-center justify-center gap-3 text-lg transition-all transform hover:-translate-y-1">
+                        <Download className="w-6 h-6" /> Download
                     </a>
-                    <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2">
-                        <RefreshCw className="w-4 h-4" /> Start Over
+                    <button onClick={reset} className="bg-white border border-gray-100 text-gray-600 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 transition-all">
+                        <RefreshCw className="w-5 h-5" /> Start Over
                     </button>
                 </div>
             </div>
@@ -1965,7 +1863,7 @@ const PdfEditor: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex flex-col font-sans relative">
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col font-sans relative">
         {renderSejdaToolbar()}
         {renderToolProperties()}
         {renderSearchPanel()}
@@ -1982,45 +1880,37 @@ const PdfEditor: React.FC = () => {
         >
              <div className="flex flex-col items-center w-full">
                  {loading ? (
-                     <div className="flex flex-col items-center mt-20">
-                         <Loader2 className="w-10 h-10 text-brand-500 animate-spin mb-4" />
-                         <p className="text-gray-500">Loading document...</p>
+                     <div className="flex flex-col items-center mt-32">
+                         <Loader2 className="w-12 h-12 text-brand-500 animate-spin mb-6" />
+                         <p className="text-gray-600 font-black tracking-tight text-xl">Preparing your document...</p>
                      </div>
                  ) : (
-                     <>
+                     <div className="flex flex-col items-center gap-12 pb-24">
                         {pages.map((page, idx) => (
-                             <div key={idx} id={`page-${idx}`} className="flex flex-col items-center mb-12">
-                                 
-                                 {/* Page Controls Bar */}
-                                 <div className="flex items-center gap-2 mb-2">
-                                     <span className="text-3xl text-gray-400 font-light mr-2">{idx + 1}</span>
-                                     <div className="flex items-center border border-blue-300 rounded overflow-hidden bg-white text-blue-500 shadow-sm">
-                                         <button onClick={() => deletePage(idx)} className="p-1.5 hover:bg-red-50 hover:text-red-500 border-r border-blue-100 transition-colors" title="Delete Page"><Trash2 className="w-4 h-4"/></button>
-                                         <button onClick={() => zoomPage(idx, 0.1)} className="p-1.5 hover:bg-blue-50 border-r border-blue-100" title="Zoom In"><ZoomIn className="w-4 h-4"/></button>
-                                         <button onClick={() => zoomPage(idx, -0.1)} className="p-1.5 hover:bg-blue-50 border-r border-blue-100" title="Zoom Out"><ZoomOut className="w-4 h-4"/></button>
-                                         <button onClick={() => rotatePage(idx, 'ccw')} className="p-1.5 hover:bg-blue-50 border-r border-blue-100" title="Rotate Left"><RotateCcw className="w-4 h-4"/></button>
-                                         <button onClick={() => rotatePage(idx, 'cw')} className="p-1.5 hover:bg-blue-50" title="Rotate Right"><RotateCw className="w-4 h-4"/></button>
+                             <div key={idx} id={`page-${idx}`} className="flex flex-col items-center group/page">
+                                 <div className="flex items-center gap-3 mb-4 transition-all opacity-40 group-hover/page:opacity-100">
+                                     <span className="text-4xl text-gray-200 font-black group-hover/page:text-gray-400 transition-colors">{idx + 1}</span>
+                                     <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white text-gray-500 shadow-sm">
+                                         <button onClick={() => deletePage(idx)} className="p-2 hover:bg-red-50 hover:text-red-500 border-r border-gray-100 transition-colors" title="Delete Page"><Trash2 className="w-4 h-4"/></button>
+                                         <button onClick={() => zoomPage(idx, 0.1)} className="p-2 hover:bg-gray-50 border-r border-gray-100" title="Zoom In"><ZoomIn className="w-4 h-4"/></button>
+                                         <button onClick={() => zoomPage(idx, -0.1)} className="p-2 hover:bg-gray-50 border-r border-gray-100" title="Zoom Out"><ZoomOut className="w-4 h-4"/></button>
+                                         <button onClick={() => rotatePage(idx, 'ccw')} className="p-2 hover:bg-gray-50 border-r border-gray-100" title="Rotate Left"><RotateCcw className="w-4 h-4"/></button>
+                                         <button onClick={() => rotatePage(idx, 'cw')} className="p-2 hover:bg-gray-50" title="Rotate Right"><RotateCw className="w-4 h-4"/></button>
                                      </div>
                                      <button 
                                         onClick={() => insertPage(idx)}
-                                        className="ml-2 flex items-center gap-1 text-sm text-blue-500 hover:text-blue-700 border border-blue-300 rounded px-2 py-1 bg-white hover:bg-blue-50 shadow-sm transition-colors"
+                                        className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-sky-600 hover:text-sky-700 border border-sky-100 rounded-xl px-4 py-2 bg-white hover:bg-sky-50 shadow-sm transition-all"
                                      >
-                                         <PlusCircle className="w-4 h-4"/> Insert page here
+                                         <PlusCircle className="w-4 h-4"/> Insert Page
                                      </button>
                                  </div>
-
-                                 <div className="relative shadow-md inline-block bg-white">
+                                 <div className="shadow-2xl shadow-black/10 rounded-sm">
                                      <PdfPageRenderer 
-                                        page={page} 
-                                        index={idx} 
-                                        file={file}
-                                        activeTool={activeTool}
-                                        selectedId={selectedId}
+                                        page={page} index={idx} file={file}
+                                        activeTool={activeTool} selectedId={selectedId}
                                         isDrawing={isDrawing && selectedPageIdx === idx}
-                                        currentPath={currentPath}
-                                        dragStart={dragStart}
-                                        shapeSettings={shapeSettings}
-                                        searchResults={searchResults}
+                                        currentPath={currentPath} dragStart={dragStart}
+                                        shapeSettings={shapeSettings} searchResults={searchResults}
                                         currentMatchId={searchResults[currentMatchIndex]?.id}
                                         onSelect={(id) => { setSelectedId(id); setSelectedPageIdx(idx); }}
                                         onMouseDown={(e) => handleMouseDown(e, idx)}
@@ -2036,13 +1926,14 @@ const PdfEditor: React.FC = () => {
                                             const newAnn: Annotation = {
                                                 id: Math.random().toString(),
                                                 type: 'text',
-                                                x: change.x, y: change.y - 20, 
+                                                x: change.x + 10, y: change.y - 10, 
                                                 content: change.newText,
                                                 fontSize: change.fontSize,
                                                 fontFamily: change.fontFamily,
                                                 color: change.color || '#000000',
                                                 fontWeight: change.fontWeight,
-                                                fontStyle: change.fontStyle
+                                                fontStyle: change.fontStyle,
+                                                textDecoration: change.textDecoration
                                             };
                                             const newPages = [...pages];
                                             newPages[idx].annotations.push(newAnn);
@@ -2059,29 +1950,27 @@ const PdfEditor: React.FC = () => {
                                      />
                                  </div>
                              </div>
-                         ))}
-                         
-                         <div className="flex flex-col items-center mb-12">
-                             <button 
-                                onClick={() => insertPage(pages.length)}
-                                className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-700 border border-blue-300 rounded px-2 py-1 bg-white hover:bg-blue-50 shadow-sm transition-colors"
-                             >
-                                 <PlusCircle className="w-4 h-4"/> Insert page here
-                             </button>
-                         </div>
-                     </>
+                        ))}
+                        <button 
+                            onClick={() => insertPage(pages.length)}
+                            className="flex flex-col items-center justify-center gap-3 p-10 border-4 border-dashed border-gray-200 rounded-3xl text-gray-400 hover:text-brand-500 hover:border-brand-200 hover:bg-white transition-all w-[300px] group"
+                        >
+                            <PlusCircle className="w-12 h-12 group-hover:scale-110 transition-transform"/>
+                            <span className="font-black uppercase tracking-widest text-sm">Add New Page</span>
+                        </button>
+                     </div>
                  )}
              </div>
         </div>
 
-        <div className="bg-[#fff9e6] border-t border-orange-100 p-4 sticky bottom-0 z-50">
-             <div className="max-w-md mx-auto">
+        <div className="bg-[#fff9e6] border-t border-orange-100 p-5 sticky bottom-0 z-50 flex justify-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+             <div className="max-w-md w-full">
                  <button 
                      onClick={savePdf}
                      disabled={processing || loading}
-                     className="w-full bg-[#009b72] hover:bg-[#008a65] disabled:opacity-70 text-white font-bold py-3 rounded-lg shadow-md flex items-center justify-center text-lg transition-colors"
+                     className="w-full bg-[#009b72] hover:bg-[#008a65] disabled:opacity-70 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-1"
                  >
-                     {processing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                     {processing ? <Loader2 className="w-6 h-6 animate-spin mr-1" /> : <Save className="w-6 h-6 mr-1" />}
                      Apply changes
                  </button>
              </div>

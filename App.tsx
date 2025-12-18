@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { Component, useState, useEffect, ReactNode, ErrorInfo } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ToolsGrid from './components/ToolsGrid';
@@ -23,6 +23,9 @@ import OcrPdf from './components/tools/OcrPdf';
 import CreateForms from './components/tools/CreateForms';
 import UnlockPdf from './components/tools/UnlockPdf';
 import ProtectPdf from './components/tools/ProtectPdf';
+import WatermarkPdf from './components/tools/WatermarkPdf';
+import GrayscalePdf from './components/tools/GrayscalePdf';
+import FlattenPdf from './components/tools/FlattenPdf';
 import TermsOfUse from './components/TermsOfUse';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import CookiesPolicy from './components/CookiesPolicy';
@@ -41,18 +44,21 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+// Fix: Explicitly import Component from react to ensure props and state are correctly typed for the class instance
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fix: Explicit state initialization to satisfy property checks
+  public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: any, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
   render() {
+    // Fix: Accessing this.state is now correctly typed via inheritance from Component
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col p-4 text-center font-sans">
@@ -68,6 +74,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
+    // Fix: Properly accessing children through this.props as defined in the Component base class
     return this.props.children;
   }
 }
@@ -151,6 +158,12 @@ const App: React.FC = () => {
                 <UnlockPdf />
                 ) : currentView === 'protect-pdf' ? (
                 <ProtectPdf />
+                ) : currentView === 'watermark-pdf' ? (
+                <WatermarkPdf />
+                ) : currentView === 'grayscale-pdf' ? (
+                <GrayscalePdf />
+                ) : currentView === 'flatten-pdf' ? (
+                <FlattenPdf />
                 ) : currentView === 'terms' ? (
                 <TermsOfUse onNavigate={handleNavigate} />
                 ) : currentView === 'privacy' ? (

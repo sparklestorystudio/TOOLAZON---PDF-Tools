@@ -3,7 +3,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { 
   FileUp, Download, Plus, Type, CheckSquare, List, AlignLeft, 
   Trash2, Settings, Save, Loader2, MousePointer, ChevronDown,
-  Calendar, PenTool, AlertCircle, CircleDot, ZoomIn, ZoomOut, PlusCircle, Copy, X, Maximize, Undo, Minus
+  Calendar, PenTool, AlertCircle, CircleDot, ZoomIn, ZoomOut, PlusCircle, Maximize, Undo, Minus, Palette
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -26,6 +26,8 @@ interface FormField {
   value?: string; // For radio button export value
   required?: boolean;
   fontSize?: number;
+  fontFamily?: string;
+  color?: string;
 }
 
 interface HistoryState {
@@ -37,6 +39,8 @@ interface HistoryState {
 // A4 is 595 x 842 points
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
+
+const FONT_FAMILIES = ['Helvetica', 'Times Roman', 'Courier'];
 
 const CreateForms: React.FC = () => {
   const { t } = useLanguage();
@@ -56,7 +60,7 @@ const CreateForms: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); // Used for move offset or resize start pos
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); 
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Refs
@@ -73,7 +77,6 @@ const CreateForms: React.FC = () => {
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(currentState);
       
-      // Limit history size if needed
       if (newHistory.length > 20) newHistory.shift();
       
       setHistory(newHistory);
@@ -86,14 +89,12 @@ const CreateForms: React.FC = () => {
           setPages(prevState.pages);
           setFields(prevState.fields);
           setHistoryIndex(historyIndex - 1);
-          // If the selected field no longer exists, deselect
           if (selectedId && !prevState.fields.find(f => f.id === selectedId)) {
               setSelectedId(null);
           }
       }
   };
 
-  // Initial history state
   useEffect(() => {
       if (history.length === 0) {
           saveHistory();
@@ -180,7 +181,9 @@ const CreateForms: React.FC = () => {
       options: type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined,
       value: type === 'radio' ? `Option_${uniqueSuffix}` : undefined,
       required: false,
-      fontSize: 12
+      fontSize: 12,
+      fontFamily: 'Helvetica',
+      color: '#000000'
     };
 
     setFields([...fields, newField]);
@@ -213,14 +216,15 @@ const CreateForms: React.FC = () => {
       label: 'Radio',
       value: `Option_${uniqueSuffix}`,
       required: parentField.required,
-      fontSize: parentField.fontSize || 12
+      fontSize: parentField.fontSize || 12,
+      fontFamily: parentField.fontFamily || 'Helvetica',
+      color: parentField.color || '#000000'
     };
 
     setFields([...fields, newField]);
     setSelectedId(id);
   };
 
-  // Helper for text inputs to save history on blur
   const handlePropertyBlur = () => {
       saveHistory();
   };
@@ -258,10 +262,7 @@ const CreateForms: React.FC = () => {
       setActivePageId(pageId);
       setIsResizing(isResizeHandle);
 
-      if (isResizeHandle) {
-          // Resize start
-      } else {
-          // Move logic
+      if (!isResizeHandle) {
           setDragOffset({
               x: logicalMouseX - field.x,
               y: logicalMouseY - field.y
@@ -285,47 +286,29 @@ const CreateForms: React.FC = () => {
       const logicalMouseY = mouseY / scale;
 
       if (isResizing) {
-          // Calculate new dimensions
           let newWidth = logicalMouseX - field.x;
           let newHeight = logicalMouseY - field.y;
-
-          // Constraints
           newWidth = Math.max(10, newWidth); 
           newHeight = Math.max(10, newHeight); 
-          
-          // Max constraints
           if (field.x + newWidth > PAGE_WIDTH) newWidth = PAGE_WIDTH - field.x;
           if (field.y + newHeight > PAGE_HEIGHT) newHeight = PAGE_HEIGHT - field.y;
-
           setFields(prev => prev.map(f => f.id === draggedId ? { ...f, width: newWidth, height: newHeight } : f));
-
       } else {
-          // Move Logic
           let newX = logicalMouseX - dragOffset.x;
           let newY = logicalMouseY - dragOffset.y;
-
-          // Snap to grid (10px)
           newX = Math.round(newX / 10) * 10;
           newY = Math.round(newY / 10) * 10;
-
-          // Bounds checking
           newX = Math.max(0, Math.min(newX, PAGE_WIDTH - field.width));
           newY = Math.max(0, Math.min(newY, PAGE_HEIGHT - field.height));
-
           setFields(prev => prev.map(f => f.id === draggedId ? { ...f, x: newX, y: newY } : f));
       }
   };
 
   const handleMouseUp = () => {
-      if (draggedId) {
-          // Dragging finished, save state
-          saveHistory();
-      }
+      if (draggedId) saveHistory();
       setDraggedId(null);
       setIsResizing(false);
   };
-
-  // --- PDF GENERATION ---
 
   const generatePdf = async () => {
     const emptyNames = fields.filter(f => f.type !== 'label' && !f.name.trim());
@@ -341,35 +324,6 @@ const CreateForms: React.FC = () => {
         return;
     }
 
-    const invalidDropdown = fields.find(f => f.type === 'dropdown' && (!f.options || f.options.filter(o => o.trim()).length === 0));
-    if (invalidDropdown) {
-        setValidationError(`Dropdown field "${invalidDropdown.name}" must have at least one option.`);
-        return;
-    }
-
-    const invalidRadio = fields.find(f => f.type === 'radio' && !f.value?.trim());
-    if (invalidRadio) {
-        setValidationError(`Radio button in group "${invalidRadio.name}" is missing an Option Value.`);
-        return;
-    }
-
-    const radioFields = fields.filter(f => f.type === 'radio');
-    const radioGroups: Record<string, Set<string>> = {};
-    for (const f of radioFields) {
-        const groupName = f.name;
-        const val = f.value?.trim() || ''; 
-        
-        if (!radioGroups[groupName]) {
-            radioGroups[groupName] = new Set();
-        }
-        
-        if (radioGroups[groupName].has(val)) {
-            setValidationError(`Radio Group "${groupName}" has duplicate option value: "${val}". Each button must have a unique value.`);
-            return;
-        }
-        radioGroups[groupName].add(val);
-    }
-
     setProcessing(true);
     setValidationError(null);
 
@@ -377,8 +331,15 @@ const CreateForms: React.FC = () => {
       const pdfDoc = await PDFDocument.create();
       const form = pdfDoc.getForm();
       const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const times = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      const courier = await pdfDoc.embedFont(StandardFonts.Courier);
+      
+      const getFont = (name?: string) => {
+          if (name === 'Times Roman') return times;
+          if (name === 'Courier') return courier;
+          return helvetica;
+      };
 
-      // Iterate Pages
       for (const pageId of pages) {
           const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
           const pageFields = fields.filter(f => f.pageId === pageId);
@@ -390,49 +351,34 @@ const CreateForms: React.FC = () => {
               const height = Number(field.height) || 0;
               const name = String(field.name || '');
               const label = String(field.label || '');
-              
               const pdfY = PAGE_HEIGHT - y - height;
 
+              const r = parseInt((field.color || '#000000').slice(1, 3), 16) / 255;
+              const g = parseInt((field.color || '#000000').slice(3, 5), 16) / 255;
+              const b = parseInt((field.color || '#000000').slice(5, 7), 16) / 255;
+              const color = rgb(r, g, b);
+
               if (field.type === 'label') {
-                  page.drawText(label, { x, y: pdfY + height - (field.fontSize || 12), size: field.fontSize || 12, font: helvetica });
+                  page.drawText(label, { 
+                      x, y: pdfY + height - (field.fontSize || 12), 
+                      size: field.fontSize || 12, 
+                      font: getFont(field.fontFamily),
+                      color: color
+                  });
                   continue;
               }
 
               if (field.type === 'radio') {
                   let radioGroup;
-                  try {
-                      radioGroup = form.getRadioGroup(name);
-                  } catch (e) {
-                      radioGroup = form.createRadioGroup(name);
-                  }
-                  
-                  const optionValue = field.value!.trim();
-                  radioGroup.addOptionToPage(optionValue, page, {
-                      x, y: pdfY, width, height,
-                      borderColor: rgb(0, 0, 0),
-                      borderWidth: 1,
-                  });
+                  try { radioGroup = form.getRadioGroup(name); } catch (e) { radioGroup = form.createRadioGroup(name); }
+                  radioGroup.addOptionToPage(field.value!.trim(), page, { x, y: pdfY, width, height, borderColor: rgb(0,0,0), borderWidth: 1 });
                   continue;
               }
 
-              if (field.type === 'text') {
+              if (field.type === 'text' || field.type === 'textarea' || field.type === 'date') {
                   const textField = form.createTextField(name);
                   textField.addToPage(page, { x, y: pdfY, width, height });
-                  if (field.placeholder) textField.setText(String(field.placeholder));
-                  if (field.required) textField.enableRequired();
-                  if (field.fontSize) textField.setFontSize(field.fontSize);
-              }
-              else if (field.type === 'date') {
-                  const dateField = form.createTextField(name);
-                  dateField.addToPage(page, { x, y: pdfY, width, height });
-                  if (field.placeholder) dateField.setText(String(field.placeholder));
-                  if (field.required) dateField.enableRequired();
-                  if (field.fontSize) dateField.setFontSize(field.fontSize);
-              }
-              else if (field.type === 'textarea') {
-                  const textField = form.createTextField(name);
-                  textField.addToPage(page, { x, y: pdfY, width, height });
-                  textField.enableMultiline();
+                  if (field.type === 'textarea') textField.enableMultiline();
                   if (field.placeholder) textField.setText(String(field.placeholder));
                   if (field.required) textField.enableRequired();
                   if (field.fontSize) textField.setFontSize(field.fontSize);
@@ -451,12 +397,7 @@ const CreateForms: React.FC = () => {
               }
               else if (field.type === 'signature') {
                   const sigBtn = form.createButton(name);
-                  sigBtn.addToPage('Sign Here', page, { 
-                      x, y: pdfY, width, height, 
-                      font: helvetica,
-                      textColor: rgb(0.5, 0.5, 0.5),
-                  });
-                  if (field.fontSize) sigBtn.setFontSize(field.fontSize);
+                  sigBtn.addToPage('Sign Here', page, { x, y: pdfY, width, height, font: helvetica, textColor: rgb(0.5, 0.5, 0.5) });
               }
           }
       }
@@ -464,14 +405,12 @@ const CreateForms: React.FC = () => {
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
-      
       const link = document.createElement('a');
       link.href = url;
       link.download = 'custom_form.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
     } catch (error: any) {
         console.error("PDF Gen Error:", error);
         setValidationError(`Failed to generate: ${error.message || error}`);
@@ -481,8 +420,6 @@ const CreateForms: React.FC = () => {
   };
 
   const selectedField = fields.find(f => f.id === selectedId);
-
-  // --- VIEWS ---
 
   return (
     <div className="h-[calc(100vh-60px)] flex bg-gray-100 font-sans overflow-hidden">
@@ -510,101 +447,56 @@ const CreateForms: React.FC = () => {
         <div className="flex flex-col gap-8 items-center w-full">
             {pages.map((pageId, index) => (
                 <div key={pageId} className="flex flex-col items-center gap-2">
-                    
-                    {/* Page Header */}
                     <div className="flex items-center gap-4 bg-white/50 px-4 py-1 rounded-full text-sm text-gray-500 backdrop-blur-sm">
                         <span>Page {index + 1}</span>
                         <button onClick={() => deletePage(pageId)} className="hover:text-red-500" title="Delete Page"><Trash2 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => addPage(index)} className="hover:text-brand-500" title="Insert Page Before"><PlusCircle className="w-3.5 h-3.5" /></button>
                     </div>
-
-                    {/* Page Canvas */}
                     <div 
                         id={`page-container-${pageId}`}
                         onClick={() => { setActivePageId(pageId); setSelectedId(null); }}
                         className={`relative bg-white shadow-lg transition-all ring-offset-4 ${activePageId === pageId ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-gray-300'}`}
-                        style={{ 
-                            width: PAGE_WIDTH * scale, 
-                            height: PAGE_HEIGHT * scale,
-                        }}
+                        style={{ width: PAGE_WIDTH * scale, height: PAGE_HEIGHT * scale }}
                     >
-                        {/* Grid Background */}
-                        <div 
-                            className="absolute inset-0 pointer-events-none opacity-10" 
-                            style={{ 
-                                backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`, 
-                                backgroundSize: `${20 * scale}px ${20 * scale}px` 
-                            }} 
-                        />
-
-                        {/* Fields */}
+                        <div className="absolute inset-0 pointer-events-none opacity-10" style={{ backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`, backgroundSize: `${20 * scale}px ${20 * scale}px` }} />
                         {fields.filter(f => f.pageId === pageId).map(field => {
                             const isSelected = selectedId === field.id;
                             const isGroupSibling = selectedField?.type === 'radio' && field.type === 'radio' && field.name === selectedField.name;
-                            
                             return (
                                 <div
                                     key={field.id}
                                     onMouseDown={(e) => handleMouseDown(e, field.id, pageId, false)}
-                                    className={`
-                                        absolute flex items-center px-2 text-sm border cursor-move select-none group overflow-hidden
-                                        ${isSelected ? 'border-brand-500 bg-brand-50/20 z-10' : isGroupSibling ? 'border-brand-300 border-dashed z-0' : 'border-gray-400 bg-white hover:border-brand-300'}
-                                    `}
+                                    className={`absolute flex items-center px-2 text-sm border cursor-move select-none group overflow-hidden ${isSelected ? 'border-brand-500 bg-brand-50/20 z-10' : isGroupSibling ? 'border-brand-300 border-dashed z-0' : 'border-gray-400 bg-white hover:border-brand-300'}`}
                                     style={{
                                         left: field.x * scale,
                                         top: field.y * scale,
                                         width: field.width * scale,
                                         height: field.height * scale,
-                                        fontSize: `${(field.fontSize || 12) * scale}px`, // Scaled font size
+                                        fontSize: `${(field.fontSize || 12) * scale}px`,
+                                        fontFamily: field.fontFamily === 'Helvetica' ? 'sans-serif' : field.fontFamily === 'Times Roman' ? 'serif' : 'monospace',
+                                        color: field.color || '#000000'
                                     }}
                                 >
-                                    {/* Render Visual Representation */}
                                     {field.type === 'label' ? (
                                         <span className="w-full truncate">{field.label}</span>
                                     ) : field.type === 'checkbox' ? (
-                                        <div className="w-full h-full flex items-center justify-center pointer-events-none">
-                                            <div className={`border border-gray-400 rounded-sm`} style={{ width: '70%', height: '70%' }} />
-                                        </div>
+                                        <div className="w-full h-full flex items-center justify-center pointer-events-none"><div className={`border border-gray-400 rounded-sm`} style={{ width: '70%', height: '70%' }} /></div>
                                     ) : field.type === 'radio' ? (
-                                        <div className="w-full h-full flex items-center justify-center pointer-events-none">
-                                            <div className={`border border-gray-400 rounded-full`} style={{ width: '70%', height: '70%' }}>
-                                                <div className="w-full h-full rounded-full bg-gray-200 transform scale-50" />
-                                            </div>
-                                        </div>
+                                        <div className="w-full h-full flex items-center justify-center pointer-events-none"><div className={`border border-gray-400 rounded-full`} style={{ width: '70%', height: '70%' }}><div className="w-full h-full rounded-full bg-gray-200 transform scale-50" /></div></div>
                                     ) : field.type === 'signature' ? (
-                                        <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-400 italic">
-                                            Sign Here
-                                        </div>
+                                        <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-400 italic">Sign Here</div>
                                     ) : (
-                                        <div className="w-full text-gray-400 truncate pointer-events-none">
-                                            {field.label} <span className="text-xs opacity-50">({field.name})</span>
-                                        </div>
+                                        <div className="w-full text-gray-400 truncate pointer-events-none">{field.label} <span className="text-xs opacity-50">({field.name})</span></div>
                                     )}
-
-                                    {/* Resize handle */}
-                                    {isSelected && (
-                                        <div 
-                                            className="absolute bottom-0 right-0 w-3 h-3 bg-brand-500 cursor-se-resize hover:scale-125 transition-transform z-50"
-                                            onMouseDown={(e) => handleMouseDown(e, field.id, pageId, true)}
-                                        />
-                                    )}
-                                    
-                                    {/* Link indicator for grouped radios */}
-                                    {isGroupSibling && !isSelected && (
-                                        <div className="absolute top-0 right-0 p-0.5 bg-brand-100 text-brand-500 rounded-bl text-[8px]">Linked</div>
-                                    )}
+                                    {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-brand-500 cursor-se-resize hover:scale-125 transition-transform z-50" onMouseDown={(e) => handleMouseDown(e, field.id, pageId, true)} />}
+                                    {isGroupSibling && !isSelected && <div className="absolute top-0 right-0 p-0.5 bg-brand-100 text-brand-500 rounded-bl text-[8px]">Linked</div>}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
             ))}
-
-            {/* Add Page Big Button */}
-            <button 
-                onClick={() => addPage(-1)}
-                className="flex flex-col items-center justify-center w-full max-w-[200px] h-32 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-brand-400 hover:text-brand-500 hover:bg-white transition-all gap-2"
-            >
+            <button onClick={() => addPage(-1)} className="flex flex-col items-center justify-center w-full max-w-[200px] h-32 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-brand-400 hover:text-brand-500 hover:bg-white transition-all gap-2">
                 <PlusCircle className="w-8 h-8" />
                 <span className="font-medium">Add New Page</span>
             </button>
@@ -613,243 +505,107 @@ const CreateForms: React.FC = () => {
 
       {/* RIGHT SIDEBAR (Properties) */}
       <div className="w-72 bg-white border-l border-gray-200 flex flex-col z-20">
-        <div className="p-4 border-b border-gray-200">
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                <Settings className="w-4 h-4" /> Properties
-            </h3>
-        </div>
-
+        <div className="p-4 border-b border-gray-200"><h3 className="font-bold text-gray-800 flex items-center gap-2"><Settings className="w-4 h-4" /> Properties</h3></div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {!selectedField ? (
-                <div className="text-center text-gray-400 mt-10">
-                    <MousePointer className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    <p>Select a field to edit its properties</p>
-                </div>
+                <div className="text-center text-gray-400 mt-10"><MousePointer className="w-12 h-12 mx-auto mb-2 opacity-20" /><p>Select a field to edit</p></div>
             ) : (
                 <>
                     <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase">
-                            {selectedField.type === 'radio' ? 'Group Name' : 'Field Name (Internal)'}
-                        </label>
-                        <input 
-                            type="text" 
-                            value={selectedField.name}
-                            onChange={(e) => updateField(selectedField.id, { name: e.target.value.replace(/\s+/g, '_') })}
-                            onBlur={handlePropertyBlur}
-                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                            placeholder="unique_name"
-                        />
-                        <p className="text-[10px] text-gray-400">Must be unique for PDF forms.</p>
+                        <label className="text-xs font-bold text-gray-500 uppercase">{selectedField.type === 'radio' ? 'Group Name' : 'Field Name'}</label>
+                        <input type="text" value={selectedField.name} onChange={(e) => updateField(selectedField.id, { name: e.target.value.replace(/\s+/g, '_') })} onBlur={handlePropertyBlur} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="unique_name" />
                     </div>
-
                     {(selectedField.type === 'text' || selectedField.type === 'textarea' || selectedField.type === 'label') && (
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Label / Content</label>
-                            <input 
-                                type="text" 
-                                value={selectedField.label}
-                                onChange={(e) => updateField(selectedField.id, { label: e.target.value })}
-                                onBlur={handlePropertyBlur}
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                            />
-                        </div>
+                        <div className="space-y-1"><label className="text-xs font-bold text-gray-500 uppercase">Label / Content</label><input type="text" value={selectedField.label} onChange={(e) => updateField(selectedField.id, { label: e.target.value })} onBlur={handlePropertyBlur} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" /></div>
                     )}
-
-                    {(selectedField.type === 'text' || selectedField.type === 'textarea') && (
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Placeholder</label>
-                            <input 
-                                type="text" 
-                                value={selectedField.placeholder || ''}
-                                onChange={(e) => updateField(selectedField.id, { placeholder: e.target.value })}
-                                onBlur={handlePropertyBlur}
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                            />
-                        </div>
-                    )}
-
                     {selectedField.type === 'radio' && (
                         <>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Option Value</label>
-                                <input 
-                                    type="text" 
-                                    value={selectedField.value || ''}
-                                    onChange={(e) => updateField(selectedField.id, { value: e.target.value })}
-                                    onBlur={handlePropertyBlur}
-                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                                />
-                                <p className="text-[10px] text-gray-400">Radio buttons with same Name form a group.</p>
-                            </div>
-                            <div className="pt-2">
-                                <button 
-                                    onClick={addRadioOption}
-                                    className="w-full py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded text-sm hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <PlusCircle className="w-4 h-4" /> Add Option to Group
-                                </button>
-                            </div>
+                            <div className="space-y-1"><label className="text-xs font-bold text-gray-500 uppercase">Option Value</label><input type="text" value={selectedField.value || ''} onChange={(e) => updateField(selectedField.id, { value: e.target.value })} onBlur={handlePropertyBlur} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" /></div>
+                            <div className="pt-2"><button onClick={addRadioOption} className="w-full py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded text-sm hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><PlusCircle className="w-4 h-4" /> Add Option to Group</button></div>
                         </>
                     )}
-
                     {selectedField.type === 'dropdown' && (
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Options</label>
-                            <textarea 
-                                value={selectedField.options?.join('\n')}
-                                onChange={(e) => updateField(selectedField.id, { options: e.target.value.split('\n') })}
-                                onBlur={handlePropertyBlur}
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-24"
-                                placeholder="One option per line"
-                            />
-                        </div>
+                        <div className="space-y-1"><label className="text-xs font-bold text-gray-500 uppercase">Options</label><textarea value={selectedField.options?.join('\n')} onChange={(e) => updateField(selectedField.id, { options: e.target.value.split('\n') })} onBlur={handlePropertyBlur} className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-24" placeholder="One option per line" /></div>
                     )}
+                    
+                    {/* TEXT STYLE SECTION */}
+                    <div className="pt-4 border-t border-gray-100 space-y-4">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Text Properties</label>
+                        
+                        <div className="space-y-1">
+                            <span className="text-[10px] text-gray-400 font-medium">Font Family</span>
+                            <select 
+                                value={selectedField.fontFamily || 'Helvetica'}
+                                onChange={(e) => { updateField(selectedField.id, { fontFamily: e.target.value }); saveHistory(); }}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs h-8"
+                            >
+                                {FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                        </div>
 
-                    {/* Font Size Control for relevant fields */}
-                    {(['text', 'textarea', 'dropdown', 'label', 'date', 'signature'].includes(selectedField.type)) && (
-                        <div className="pt-4 border-t border-gray-100">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Text Style</label>
-                            <div className="flex items-center gap-3 mt-2">
-                                <span className="text-[10px] text-gray-400">Size</span>
-                                <div className="flex items-center border border-gray-300 rounded bg-white">
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 space-y-1">
+                                <span className="text-[10px] text-gray-400 font-medium">Font Size</span>
+                                <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-8">
                                     <button 
-                                        onClick={() => {
-                                            const newSize = Math.max(6, (selectedField.fontSize || 12) - 1);
-                                            updateField(selectedField.id, { fontSize: newSize });
-                                            saveHistory();
-                                        }}
-                                        className="px-2 py-1 hover:bg-gray-50 text-gray-600 border-r border-gray-300"
+                                        onClick={() => { const newSize = Math.max(6, (selectedField.fontSize || 12) - 1); updateField(selectedField.id, { fontSize: newSize }); saveHistory(); }} 
+                                        className="px-2 h-full hover:bg-gray-50 border-r border-gray-200 text-gray-500"
                                     >
-                                        <Minus className="w-3 h-3" />
+                                        <Minus className="w-3 h-3"/>
                                     </button>
                                     <input 
-                                        type="number" 
-                                        value={selectedField.fontSize || 12} 
-                                        onChange={(e) => updateField(selectedField.id, { fontSize: Number(e.target.value) })}
+                                        type="number"
+                                        value={selectedField.fontSize || 12}
+                                        onChange={(e) => { updateField(selectedField.id, { fontSize: Number(e.target.value) }); }}
                                         onBlur={handlePropertyBlur}
-                                        className="w-12 text-center text-sm py-1 outline-none"
+                                        className="w-12 text-center text-xs h-full outline-none border-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     />
                                     <button 
-                                        onClick={() => {
-                                            const newSize = Math.min(72, (selectedField.fontSize || 12) + 1);
-                                            updateField(selectedField.id, { fontSize: newSize });
-                                            saveHistory();
-                                        }}
-                                        className="px-2 py-1 hover:bg-gray-50 text-gray-600 border-l border-gray-300"
+                                        onClick={() => { const newSize = Math.min(72, (selectedField.fontSize || 12) + 1); updateField(selectedField.id, { fontSize: newSize }); saveHistory(); }} 
+                                        className="px-2 h-full hover:bg-gray-50 border-l border-gray-200 text-gray-500"
                                     >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-3 h-3"/>
                                     </button>
                                 </div>
                             </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] text-gray-400 font-medium">Color</span>
+                                <div className="flex items-center gap-1.5 border border-gray-300 rounded px-2 py-1 h-8">
+                                    <input type="color" value={selectedField.color || '#000000'} onChange={(e) => { updateField(selectedField.id, { color: e.target.value }); saveHistory(); }} className="w-5 h-5 cursor-pointer"/>
+                                    <Palette className="w-3 h-3 text-gray-400"/>
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
 
                     {selectedField.type !== 'label' && selectedField.type !== 'radio' && (
-                        <div className="flex items-center gap-2 pt-2">
-                            <input 
-                                type="checkbox" 
-                                id="req"
-                                checked={selectedField.required}
-                                onChange={(e) => {
-                                    updateField(selectedField.id, { required: e.target.checked });
-                                    saveHistory();
-                                }}
-                                className="rounded text-brand-500 focus:ring-brand-500"
-                            />
-                            <label htmlFor="req" className="text-sm text-gray-700">Required Field</label>
-                        </div>
+                        <div className="flex items-center gap-2 pt-2"><input type="checkbox" id="req" checked={selectedField.required} onChange={(e) => { updateField(selectedField.id, { required: e.target.checked }); saveHistory(); }} className="rounded text-brand-500 focus:ring-brand-500" /><label htmlFor="req" className="text-sm text-gray-700">Required Field</label></div>
                     )}
-
-                    <div className="pt-4 border-t border-gray-100">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Layout</label>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400">Width</span>
-                                <input 
-                                    type="number" 
-                                    value={Math.round(selectedField.width)} 
-                                    onChange={(e) => updateField(selectedField.id, { width: Number(e.target.value) })} 
-                                    onBlur={handlePropertyBlur}
-                                    className="border rounded px-2 py-1 text-sm"
-                                />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400">Height</span>
-                                <input 
-                                    type="number" 
-                                    value={Math.round(selectedField.height)} 
-                                    onChange={(e) => updateField(selectedField.id, { height: Number(e.target.value) })} 
-                                    onBlur={handlePropertyBlur}
-                                    className="border rounded px-2 py-1 text-sm"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-6">
-                        <button 
-                            onClick={() => deleteField(selectedField.id)}
-                            className="w-full flex items-center justify-center gap-2 text-red-500 border border-red-200 hover:bg-red-50 py-2 rounded text-sm transition-colors"
-                        >
-                            <Trash2 className="w-4 h-4" /> Delete Field
-                        </button>
-                    </div>
+                    <div className="pt-4 border-t border-gray-100"><label className="text-xs font-bold text-gray-500 uppercase">Layout</label><div className="grid grid-cols-2 gap-2 mt-2"><div className="flex flex-col"><span className="text-[10px] text-gray-400">Width</span><input type="number" value={Math.round(selectedField.width)} onChange={(e) => updateField(selectedField.id, { width: Number(e.target.value) })} onBlur={handlePropertyBlur} className="border rounded px-2 py-1 text-sm" /></div><div className="flex flex-col"><span className="text-[10px] text-gray-400">Height</span><input type="number" value={Math.round(selectedField.height)} onChange={(e) => updateField(selectedField.id, { height: Number(e.target.value) })} onBlur={handlePropertyBlur} className="border rounded px-2 py-1 text-sm" /></div></div></div>
+                    <div className="pt-6"><button onClick={() => deleteField(selectedField.id)} className="w-full flex items-center justify-center gap-2 text-red-500 border border-red-200 hover:bg-red-50 py-2 rounded text-sm transition-colors"><Trash2 className="w-4 h-4" /> Delete Field</button></div>
                 </>
             )}
         </div>
-
         <div className="p-4 border-t border-gray-200 bg-gray-50">
-            {validationError && (
-                <div className="mb-3 p-2 bg-red-100 border border-red-200 text-red-700 text-xs rounded flex items-start gap-1">
-                    <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    {validationError}
-                </div>
-            )}
-            <button 
-                onClick={generatePdf}
-                disabled={processing}
-                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
-            >
-                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Download PDF Form
-            </button>
+            {validationError && <div className="mb-3 p-2 bg-red-100 border border-red-200 text-red-700 text-xs rounded flex items-start gap-1"><AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />{validationError}</div>}
+            <button onClick={generatePdf} disabled={processing} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-70">{processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Download PDF Form</button>
         </div>
       </div>
-
-      {/* Floating Zoom Controls */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-md border border-gray-200 rounded-full px-4 py-2 flex items-center gap-4 z-30">
           <button onClick={() => setScale(Math.max(0.5, scale - 0.1))} className="text-gray-500 hover:text-brand-500"><ZoomOut className="w-4 h-4" /></button>
           <span className="text-xs font-medium w-8 text-center">{Math.round(scale * 100)}%</span>
           <button onClick={() => setScale(Math.min(2.5, scale + 0.1))} className="text-gray-500 hover:text-brand-500"><ZoomIn className="w-4 h-4" /></button>
           <div className="w-px h-4 bg-gray-200"></div>
-          <button onClick={handleFitWidth} className="text-gray-500 hover:text-brand-500" title="Fit Width">
-              <Maximize className="w-4 h-4" />
-          </button>
+          <button onClick={handleFitWidth} className="text-gray-500 hover:text-brand-500" title="Fit Width"><Maximize className="w-4 h-4" /></button>
           <div className="w-px h-4 bg-gray-200"></div>
-          <button 
-            onClick={undo} 
-            disabled={historyIndex <= 0}
-            className="text-gray-500 hover:text-brand-500 disabled:opacity-30 disabled:cursor-not-allowed" 
-            title="Undo"
-          >
-              <Undo className="w-4 h-4" />
-          </button>
+          <button onClick={undo} disabled={historyIndex <= 0} className="text-gray-500 hover:text-brand-500 disabled:opacity-30 disabled:cursor-not-allowed" title="Undo"><Undo className="w-4 h-4" /></button>
       </div>
-
     </div>
   );
 };
 
-// Subcomponent for Toolbar Buttons
 const ToolBtn = ({ icon: Icon, label, onClick }: { icon: any, label: string, onClick: () => void }) => (
-    <button 
-        onClick={onClick}
-        className="flex flex-col items-center justify-center w-12 h-12 rounded hover:bg-brand-50 text-gray-600 hover:text-brand-600 transition-colors"
-        title={label}
-    >
-        <Icon className="w-5 h-5 mb-1" />
-        <span className="text-[9px] font-medium">{label}</span>
-    </button>
+    <button onClick={onClick} className="flex flex-col items-center justify-center w-12 h-12 rounded hover:bg-brand-50 text-gray-600 hover:text-brand-600 transition-colors" title={label}><Icon className="w-5 h-5 mb-1" /><span className="text-[9px] font-medium">{label}</span></button>
 );
 
 export default CreateForms;

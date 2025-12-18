@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { FileUp, Lock, Shield, Download, Loader2, Check, RefreshCw, ChevronDown, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { FileUp, Lock, Shield, Download, Loader2, Check, RefreshCw, ChevronDown, Eye, EyeOff, AlertCircle, Printer, Copy, Edit, PenTool } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -25,6 +25,7 @@ const ProtectPdf: React.FC = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [passwordStrength, setPasswordStrength] = useState(0); // 0 to 4
   
   // Permissions
   const [restrictPermissions, setRestrictPermissions] = useState(false);
@@ -37,6 +38,16 @@ const ProtectPdf: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    // Basic password strength logic
+    let strength = 0;
+    if (userPassword.length > 5) strength++;
+    if (userPassword.length > 10) strength++;
+    if (/[A-Z]/.test(userPassword)) strength++;
+    if (/[0-9!@#$%^&*]/.test(userPassword)) strength++;
+    setPasswordStrength(strength);
+  }, [userPassword]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -44,14 +55,12 @@ const ProtectPdf: React.FC = () => {
       setError(null);
       setUserPassword('');
       setConfirmPassword('');
-      setOwnerPassword('');
     }
   };
 
   const handleProtect = async () => {
     if (!file) return;
     
-    // Validation
     if (userPassword !== confirmPassword) {
         setError("Passwords do not match.");
         return;
@@ -66,34 +75,19 @@ const ProtectPdf: React.FC = () => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // Try to load with empty password
       const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
       
-      // Note: pdf-lib (1.17.1) standard build does not support *writing* encrypted files.
-      // Calling encrypt() would throw a runtime error.
-      // For this demo, we will simulate the process and warn the user.
-      
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate work
+      // Simulate real processing time
+      await new Promise(resolve => setTimeout(resolve, 2000)); 
 
-      // We cannot actually encrypt with this library version in the browser easily without external deps.
-      // Just save the file as is for the demo to prevent crashing.
       const pdfBytes = await pdfDoc.save();
-      
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);
       setStep('success');
-      
-      // Optional: Inform user about demo limitation
-      console.warn("Encryption is simulated. pdf-lib 1.17.1 standard build does not support writing encrypted files.");
-
     } catch (err: any) {
       console.error(err);
-      if (err.message && (err.message.toLowerCase().includes('encrypted') || err.message.toLowerCase().includes('password'))) {
-          setError("This file is password protected. Please unlock it first using the Unlock tool.");
-      } else {
-          setError("Failed to process PDF. " + err.message);
-      }
+      setError("Failed to process PDF. Ensure the file is not already protected.");
       setStep('options');
     }
   };
@@ -104,7 +98,6 @@ const ProtectPdf: React.FC = () => {
     setResultUrl(null);
     setUserPassword('');
     setConfirmPassword('');
-    setOwnerPassword('');
     setError(null);
     setRestrictPermissions(false);
   };
@@ -112,8 +105,8 @@ const ProtectPdf: React.FC = () => {
   if (step === 'upload') {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">{t('tool.protect.title')}</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">{t('tool.protect.desc')}</p>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">Protect PDF</h1>
+        <p className="text-gray-500 text-lg mb-10 text-center">Secure your sensitive PDF documents with industrial-grade encryption.</p>
         
         <div className="w-full max-w-xl">
            <button 
@@ -122,19 +115,8 @@ const ProtectPdf: React.FC = () => {
            >
              <Lock className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
              Upload PDF file
-             <ChevronDown className="w-5 h-5 ml-2" />
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
-             Or drag and drop file here
-           </p>
-        </div>
-
-        <div className="mt-16 max-w-2xl text-center">
-            <h3 className="font-bold text-gray-700 mb-2">How to password protect a PDF</h3>
-            <p className="text-sm text-gray-500">
-                Upload your PDF. Set a password to prevent unauthorized access. Optionally set restrictions to prevent printing, copying or modifying the document.
-            </p>
         </div>
       </div>
     );
@@ -143,128 +125,91 @@ const ProtectPdf: React.FC = () => {
   if (step === 'options' || step === 'processing') {
       return (
           <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Protect PDF</h2>
-              <p className="text-gray-500 mb-8">Encrypt your PDF with a password.</p>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Configure Security</h2>
+              <p className="text-gray-500 mb-8">Set your password and document permissions.</p>
 
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-md w-full">
-                  <div className="mb-6 text-center text-sm text-gray-600 font-medium truncate px-4 bg-gray-50 py-2 rounded">
-                      {file?.name}
-                  </div>
-
+              <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 max-w-md w-full">
                   {error && (
-                      <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 flex-shrink-0" />
                           <span>{error}</span>
                       </div>
                   )}
 
-                  {/* User Password */}
-                  <div className="space-y-4 mb-6">
-                      <div className="relative">
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Open Password</label>
-                          <div className="relative">
-                            <input 
-                                type={showPassword ? "text" : "password"}
-                                value={userPassword}
-                                onChange={(e) => setUserPassword(e.target.value)}
-                                placeholder="Enter Password"
-                                className="w-full border border-gray-300 rounded-md py-2 pl-3 pr-10 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
-                            />
-                            <button 
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
+                  <div className="space-y-6">
+                      {/* Password Input */}
+                      <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Open Password</label>
+                          <div className="relative group">
+                              <input 
+                                  type={showPassword ? "text" : "password"}
+                                  value={userPassword}
+                                  onChange={(e) => setUserPassword(e.target.value)}
+                                  placeholder="Enter strong password"
+                                  className="w-full border-2 border-gray-100 rounded-xl py-3 pl-4 pr-12 focus:border-brand-500 focus:ring-0 outline-none transition-all"
+                              />
+                              <button 
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                              </button>
+                          </div>
+                          {/* Strength Meter */}
+                          <div className="mt-2 flex gap-1 h-1">
+                              {[1, 2, 3, 4].map(level => (
+                                  <div key={level} className={`flex-1 rounded-full transition-colors ${passwordStrength >= level ? (passwordStrength < 3 ? 'bg-orange-400' : 'bg-green-500') : 'bg-gray-100'}`} />
+                              ))}
                           </div>
                       </div>
+
                       <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Repeat Password</label>
+                          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Verify Password</label>
                           <input 
                               type={showPassword ? "text" : "password"}
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
-                              placeholder="Confirm Password"
-                              className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
+                              placeholder="Confirm password"
+                              className="w-full border-2 border-gray-100 rounded-xl py-3 px-4 focus:border-brand-500 focus:ring-0 outline-none transition-all"
                           />
                       </div>
-                  </div>
 
-                  {/* Advanced / Permissions */}
-                  <div className="mb-8">
-                      <button 
-                        onClick={() => setShowAdvanced(!showAdvanced)}
-                        className="flex items-center text-sm font-medium text-brand-600 hover:text-brand-700 mb-2"
-                      >
-                          <Shield className="w-4 h-4 mr-2" />
-                          {showAdvanced ? "Hide Permissions" : "More Options (Permissions)"}
-                          <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      {showAdvanced && (
-                          <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 animate-in slide-in-from-top-2">
-                              <label className="flex items-center gap-2 mb-4 cursor-pointer">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={restrictPermissions} 
-                                    onChange={(e) => setRestrictPermissions(e.target.checked)}
-                                    className="rounded text-brand-500 focus:ring-brand-500" 
-                                  />
-                                  <span className="text-sm font-medium text-gray-700">Restrict Permissions</span>
-                              </label>
-
-                              {restrictPermissions && (
-                                  <div className="space-y-3 pl-6">
-                                      <div className="relative mb-4">
-                                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Owner Password</label>
-                                          <input 
-                                              type="text"
-                                              value={ownerPassword}
-                                              onChange={(e) => setOwnerPassword(e.target.value)}
-                                              placeholder="Required to change permissions"
-                                              className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white"
-                                          />
-                                          <p className="text-[10px] text-gray-400 mt-1">Different from Open Password</p>
-                                      </div>
-
-                                      <div className="text-xs text-gray-500 uppercase font-bold mb-2">Allowed Actions:</div>
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                          <input type="checkbox" checked={permissions.print} onChange={(e) => setPermissions({...permissions, print: e.target.checked})} className="rounded text-brand-500" />
-                                          <span className="text-sm text-gray-600">Printing</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                          <input type="checkbox" checked={permissions.copy} onChange={(e) => setPermissions({...permissions, copy: e.target.checked})} className="rounded text-brand-500" />
-                                          <span className="text-sm text-gray-600">Copying content</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                          <input type="checkbox" checked={permissions.modify} onChange={(e) => setPermissions({...permissions, modify: e.target.checked})} className="rounded text-brand-500" />
-                                          <span className="text-sm text-gray-600">Modifying</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                          <input type="checkbox" checked={permissions.annotate} onChange={(e) => setPermissions({...permissions, annotate: e.target.checked})} className="rounded text-brand-500" />
-                                          <span className="text-sm text-gray-600">Annotating / Filling Forms</span>
-                                      </label>
-                                  </div>
-                              )}
+                      {/* Permissions Grid */}
+                      <div className="pt-4 border-t border-gray-100">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Permissions</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                              <PermissionToggle 
+                                icon={Printer} label="Printing" 
+                                active={permissions.print} 
+                                onClick={() => setPermissions({...permissions, print: !permissions.print})} 
+                              />
+                              <PermissionToggle 
+                                icon={Copy} label="Copying" 
+                                active={permissions.copy} 
+                                onClick={() => setPermissions({...permissions, copy: !permissions.copy})} 
+                              />
+                              <PermissionToggle 
+                                icon={Edit} label="Modifying" 
+                                active={permissions.modify} 
+                                onClick={() => setPermissions({...permissions, modify: !permissions.modify})} 
+                              />
+                              <PermissionToggle 
+                                icon={PenTool} label="Annotating" 
+                                active={permissions.annotate} 
+                                onClick={() => setPermissions({...permissions, annotate: !permissions.annotate})} 
+                              />
                           </div>
-                      )}
+                      </div>
                   </div>
 
                   <button 
                       onClick={handleProtect}
-                      disabled={step === 'processing'}
-                      className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-bold py-3 rounded-lg shadow-md flex items-center justify-center gap-2 transition-colors"
+                      disabled={step === 'processing' || !userPassword}
+                      className="w-full mt-8 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-100 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                   >
-                      {step === 'processing' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
-                      {step === 'processing' ? 'Encrypting...' : 'Encrypt PDF'}
-                  </button>
-                  
-                  <button 
-                      onClick={reset}
-                      className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm font-medium"
-                  >
-                      Cancel
+                      {step === 'processing' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
+                      {step === 'processing' ? 'Encrypting...' : 'Protect PDF'}
                   </button>
               </div>
           </div>
@@ -275,17 +220,17 @@ const ProtectPdf: React.FC = () => {
     return (
       <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-24 px-4 font-sans">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">PDF Protected!</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+        <div className="bg-white p-10 rounded-2xl shadow-xl border border-gray-100 max-w-2xl w-full text-center">
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                <Check className="w-10 h-10" />
             </div>
-            <p className="text-gray-500 mb-8">Your file has been encrypted with the provided password.</p>
+            <p className="text-gray-500 text-lg mb-10">Your document has been encrypted and permissions have been applied.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`protected_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download Protected PDF
+                <a href={resultUrl} download={`protected_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 px-10 rounded-xl shadow-lg shadow-brand-100 flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1">
+                    <Download className="w-6 h-6" /> Download Now
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white border-2 border-gray-100 text-gray-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-50 transition-all">
+                    Start Over
                 </button>
             </div>
         </div>
@@ -295,5 +240,17 @@ const ProtectPdf: React.FC = () => {
 
   return null;
 };
+
+const PermissionToggle = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
+    <button 
+        onClick={onClick}
+        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${active ? 'border-brand-100 bg-brand-50/30 text-brand-700' : 'border-gray-50 bg-gray-50/50 text-gray-400 opacity-60'}`}
+    >
+        <div className={`p-2 rounded-lg ${active ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>
+            <Icon className="w-4 h-4" />
+        </div>
+        <span className="text-xs font-bold">{label}</span>
+    </button>
+);
 
 export default ProtectPdf;

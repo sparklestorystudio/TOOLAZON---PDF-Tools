@@ -2,7 +2,7 @@ import { LucideIcon } from 'lucide-react';
 
 export type LanguageCode = 'en' | 'id' | 'de' | 'cs' | 'es' | 'fr' | 'it' | 'ja' | 'ko' | 'hu' | 'nl' | 'no' | 'pl' | 'pt' | 'ro' | 'fi' | 'sv' | 'th' | 'vi' | 'tr' | 'hi' | 'ur' | 'zh';
 
-export type View = 'home' | 'extract-pages' | 'compress-pdf' | 'merge-pdf' | 'delete-pages' | 'crop-pdf' | 'pdf-editor' | 'pdf-to-word' | 'split-pdf' | 'edit-metadata' | 'organize-pdf' | 'header-footer' | 'excel-to-pdf' | 'pdf-to-jpg' | 'pdf-to-excel' | 'ocr-pdf' | 'create-forms' | 'unlock-pdf' | 'protect-pdf' | 'terms' | 'privacy' | 'cookies' | 'about';
+export type View = 'home' | 'extract-pages' | 'compress-pdf' | 'merge-pdf' | 'delete-pages' | 'crop-pdf' | 'pdf-editor' | 'pdf-to-word' | 'split-pdf' | 'edit-metadata' | 'organize-pdf' | 'header-footer' | 'excel-to-pdf' | 'pdf-to-jpg' | 'pdf-to-excel' | 'ocr-pdf' | 'create-forms' | 'unlock-pdf' | 'protect-pdf' | 'watermark-pdf' | 'grayscale-pdf' | 'flatten-pdf' | 'terms' | 'privacy' | 'cookies' | 'about';
 
 export interface ToolItem {
   id: string;
