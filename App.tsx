@@ -1,4 +1,5 @@
-import React, { Component, useState, useEffect, ReactNode, ErrorInfo } from 'react';
+
+import React, { useState, useEffect, ReactNode, ErrorInfo } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ToolsGrid from './components/ToolsGrid';
@@ -44,10 +45,13 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-// Fix: Explicitly import Component from react to ensure props and state are correctly typed for the class instance
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Explicit state initialization to satisfy property checks
+// Fix: Changed inheritance to React.Component and removed redundant named import 'Component' to fix 'props' resolution error in TypeScript
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
@@ -58,12 +62,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   render() {
-    // Fix: Accessing this.state is now correctly typed via inheritance from Component
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col p-4 text-center font-sans">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-            <p className="text-gray-500 mb-6">We're sorry, but the application encountered an error.</p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 flex-col p-4 text-center font-sans">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Something went wrong</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">We're sorry, but the application encountered an error.</p>
             <button 
                 onClick={() => window.location.reload()} 
                 className="flex items-center gap-2 bg-brand-500 text-white px-6 py-3 rounded-lg hover:bg-brand-600 transition-colors"
@@ -74,7 +77,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // Fix: Properly accessing children through this.props as defined in the Component base class
+    // Fix: Accessing this.props.children correctly after resolving base class inheritance issue
     return this.props.children;
   }
 }
@@ -112,16 +115,16 @@ const App: React.FC = () => {
     <ErrorBoundary>
         <ThemeProvider>
         <LanguageProvider>
-            <div className="min-h-screen bg-white flex flex-col relative">
+            <div className="min-h-screen bg-white dark:bg-gray-950 flex flex-col relative transition-colors duration-300">
             <Navbar onNavigate={handleNavigate} />
             
             <main className="flex-grow">
                 {currentView === 'home' ? (
-                <>
+                <div className="dark:bg-gray-950 transition-colors">
                     <Hero onNavigate={handleNavigate} />
                     <ToolsGrid onNavigate={handleNavigate} />
                     <Guides />
-                </>
+                </div>
                 ) : currentView === 'extract-pages' ? (
                 <ExtractPages />
                 ) : currentView === 'compress-pdf' ? (
@@ -146,7 +149,7 @@ const App: React.FC = () => {
                 <HeaderFooterPdf />
                 ) : currentView === 'excel-to-pdf' ? (
                 <ExcelToPdf />
-                ) : currentView === 'pdf-to-jpg' ? (
+                ) : currentView === 'pdf-jpg' ? (
                 <PdfToJpg />
                 ) : currentView === 'pdf-to-excel' ? (
                 <PdfToExcel />
@@ -182,8 +185,8 @@ const App: React.FC = () => {
             <button
                 onClick={scrollToTop}
                 className={`
-                fixed bottom-24 right-4 md:right-6 z-40 p-3 rounded-full bg-white text-gray-600 shadow-lg border border-gray-200 
-                hover:bg-gray-50 hover:text-brand-600 transition-all duration-300 transform
+                fixed bottom-24 right-4 md:right-6 z-40 p-3 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-lg border border-gray-200 dark:border-gray-700
+                hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-brand-600 dark:hover:text-brand-400 transition-all duration-300 transform
                 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}
                 `}
                 aria-label="Scroll to top"

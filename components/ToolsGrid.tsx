@@ -21,17 +21,17 @@ const ToolCard: React.FC<ToolCardProps> = ({ item, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col h-full group"
+      className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col h-full group"
     >
       <div className="flex items-start mb-4">
-        <div className={`p-3 rounded-lg bg-opacity-10 mr-4 ${bgColorClass}`}>
-          <Icon className={`w-6 h-6 ${item.color || 'text-gray-600'}`} />
+        <div className={`p-3 rounded-lg bg-opacity-10 dark:bg-opacity-20 mr-4 ${bgColorClass}`}>
+          <Icon className={`w-6 h-6 ${item.color || 'text-gray-600 dark:text-gray-400'}`} />
         </div>
-        <h3 className="text-gray-800 font-bold text-lg group-hover:text-brand-600 transition-colors mt-1">
+        <h3 className="text-gray-800 dark:text-gray-100 font-bold text-lg group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors mt-1">
             {title}
         </h3>
       </div>
-      <p className="text-gray-500 text-sm leading-relaxed">
+      <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
         {description}
       </p>
     </div>
@@ -107,7 +107,7 @@ const ToolsGrid: React.FC<NavProps> = ({ onNavigate }) => {
       <div className="space-y-16">
         {TOOL_CATEGORIES.map((category) => (
           <div key={category.title}>
-            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-gray-200 pb-2 inline-block">
+            <h2 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6 border-b border-gray-200 dark:border-gray-800 pb-2 inline-block">
               {getCatTitle(category.title)}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
