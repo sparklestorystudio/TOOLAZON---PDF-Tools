@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, Scissors, ZoomIn, ZoomOut, Search, ScanLine } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -5,6 +6,7 @@ import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
@@ -238,28 +240,27 @@ const SplitPdf: React.FC = () => {
 
   if (step === 'upload') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">Split PDF</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">Split specific page ranges or extract every page into a separate document</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors duration-300">
+        <h1 className="text-4xl font-black text-gray-800 dark:text-gray-100 mb-2 text-center tracking-tight leading-tight">Split PDF</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium max-w-xl">Split specific page ranges or extract every page into a separate document</p>
         
         <div className="w-full max-w-xl">
            <button 
              onClick={() => fileInputRef.current?.click()}
-             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-3 text-xl group"
+             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 transition-all flex items-center justify-center gap-3 text-2xl group transform hover:-translate-y-1"
            >
-             <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+             <FileUp className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
              Upload PDF file
-             <ChevronDown className="w-5 h-5 ml-2" />
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
+           <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4 uppercase tracking-widest font-bold">
              Or drag and drop file here
            </p>
         </div>
 
-        <div className="mt-16 max-w-2xl text-center">
-            <h3 className="font-bold text-gray-700 mb-2">How to split a PDF file</h3>
-            <p className="text-sm text-gray-500">
+        <div className="mt-20 max-w-2xl text-center">
+            <h3 className="font-bold text-gray-700 dark:text-gray-300 mb-2">How to split a PDF file</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
                 Upload your file. Click on the scissors icon between pages to mark where you want to split the document. Click 'Split PDF' to download a ZIP file with all parts.
             </p>
         </div>
@@ -269,19 +270,19 @@ const SplitPdf: React.FC = () => {
 
   if (step === 'success' && resultUrl) {
     return (
-      <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Your document is ready</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+      <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-12 px-4 font-sans transition-colors duration-300">
+        <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 tracking-tight">Your document is ready</h2>
+        <div className="bg-white dark:bg-gray-900 p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-8 animate-in zoom-in duration-700">
+                <Check className="w-12 h-12" />
             </div>
-            <p className="text-gray-500 mb-8">PDF split successfully.</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg font-medium">PDF split successfully.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`split_${file?.name.replace('.pdf', '')}.zip`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download Zip
+                <a href={resultUrl} download={`split_${file?.name.replace('.pdf', '')}.zip`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-4 px-10 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-lg transition-all transform hover:-translate-y-1">
+                    <Download className="w-6 h-6" /> Download Zip
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5" /> Start Over
                 </button>
             </div>
         </div>
@@ -291,91 +292,93 @@ const SplitPdf: React.FC = () => {
 
   // Options/Editor View
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex flex-col font-sans transition-colors duration-300">
+        {processing && <ProcessingOverlay status="Splitting PDF parts..." progress={progress} />}
+        {ocrProcessing && <ProcessingOverlay status={`Analyzing text for splits... ${ocrProgress}%`} progress={ocrProgress} />}
+        
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 py-4 px-6 flex flex-col md:flex-row items-center justify-between sticky top-[60px] z-30 shadow-sm gap-4 md:gap-0">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-4 px-6 flex flex-col md:flex-row items-center justify-between sticky top-[60px] z-30 shadow-sm gap-4 md:gap-0">
             <div className="text-center md:text-left">
-                <h2 className="text-xl font-bold text-gray-800">Split PDF by pages</h2>
-                <div className="text-sm text-gray-500">Selected: {file?.name}</div>
+                <h2 className="text-xl font-black text-gray-800 dark:text-gray-100 tracking-tight">Split PDF by pages</h2>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Selected: {file?.name}</div>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setShowSearch(!showSearch)} 
-                        className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded transition-colors ${showSearch ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                        className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${showSearch ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                     >
                         <ScanLine className="w-4 h-4" /> Split by Text
                     </button>
-                    <button onClick={() => setSplitPoints(new Set())} className="text-brand-500 text-sm hover:underline">Reset</button>
+                    <button onClick={() => setSplitPoints(new Set())} className="text-brand-500 dark:text-brand-400 text-sm font-bold hover:underline">Reset</button>
                 </div>
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                    <button onClick={() => setScale(Math.max(0.5, scale - 0.1))} className="p-1 hover:bg-gray-200 rounded"><ZoomOut className="w-4 h-4 text-gray-600" /></button>
-                    <span className="text-xs text-gray-500 w-8 text-center">{Math.round(scale * 100)}%</span>
-                    <button onClick={() => setScale(Math.min(2, scale + 0.1))} className="p-1 hover:bg-gray-200 rounded"><ZoomIn className="w-4 h-4 text-gray-600" /></button>
+                <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
+                    <button onClick={() => setScale(Math.max(0.5, scale - 0.1))} className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg transition-colors"><ZoomOut className="w-4 h-4 text-gray-600 dark:text-gray-400" /></button>
+                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 w-10 text-center uppercase">{Math.round(scale * 100)}%</span>
+                    <button onClick={() => setScale(Math.min(2, scale + 0.1))} className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg transition-colors"><ZoomIn className="w-4 h-4 text-gray-600 dark:text-gray-400" /></button>
                 </div>
             </div>
         </div>
 
         {/* Text Split UI */}
         {showSearch && (
-            <div className="bg-gray-50 border-b border-gray-200 p-4 animate-in slide-in-from-top-2">
+            <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-6 animate-in slide-in-from-top-2">
                 <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center gap-3">
-                    <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Split BEFORE pages containing:</span>
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Split BEFORE pages containing:</span>
+                    <div className="relative flex-1 w-full group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-600 group-focus-within:text-brand-500 transition-colors" />
                         <input 
                             type="text" 
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
-                            placeholder="Enter text keyword (e.g., 'Chapter', 'Invoice #')"
-                            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
+                            placeholder="Enter keyword (e.g., 'Chapter', 'Invoice')"
+                            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-950 border-2 border-transparent focus:border-brand-500 rounded-2xl text-sm font-bold text-gray-800 dark:text-white outline-none transition-all shadow-inner"
                         />
                     </div>
                     <button 
                         onClick={handleAutoSplit}
                         disabled={ocrProcessing || !searchText.trim()}
-                        className="bg-brand-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-brand-600 disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto justify-center"
+                        className="bg-brand-500 hover:bg-brand-600 text-white font-black px-6 py-3 rounded-2xl text-sm transition-all shadow-lg shadow-brand-100 dark:shadow-brand-900/20 disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                         {ocrProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {ocrProcessing ? `Scanning... ${ocrProgress}%` : 'Find Splits'}
+                        Find Splits
                     </button>
-                </div>
-                <div className="max-w-2xl mx-auto mt-2 text-xs text-gray-500 flex items-center gap-1">
-                    <ScanLine className="w-3 h-3" />
-                    <span>Includes OCR for scanned documents</span>
                 </div>
             </div>
         )}
 
         {/* Workspace */}
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
+        <div className="flex-1 overflow-y-auto p-8">
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-64">
-                    <Loader2 className="w-10 h-10 text-brand-500 animate-spin mb-4" />
-                    <p className="text-gray-500">Loading pages...</p>
+                <div className="flex flex-col items-center justify-center h-64 mt-20">
+                    <Loader2 className="w-16 h-16 text-brand-500 animate-spin mb-6" />
+                    <p className="text-gray-500 dark:text-gray-400 font-bold tracking-tight">Generating document preview...</p>
                 </div>
             ) : (
-                <div className="flex flex-wrap justify-center gap-y-8 gap-x-2">
+                <div className="flex flex-wrap justify-center gap-y-10 gap-x-2 pb-32">
                     {pages.map((page) => {
                         const isSplit = splitPoints.has(page.index);
                         return (
                             <div key={page.index} className="flex items-center">
                                 {/* Page Card */}
-                                <div className="flex flex-col items-center" style={{ width: `${140 * scale}px` }}>
-                                    <div className="bg-white p-2 shadow-sm border border-gray-200">
+                                <div className="flex flex-col items-center group/page" style={{ width: `${140 * scale}px` }}>
+                                    <div className={`bg-white dark:bg-gray-900 p-2 shadow-lg transition-all rounded-sm ring-2 ${isSplit ? 'ring-brand-500 shadow-brand-500/10' : 'ring-transparent hover:ring-brand-200'}`}>
                                         <img src={page.imageSrc} alt={`Page ${page.index + 1}`} className="w-full h-auto pointer-events-none select-none" />
                                     </div>
-                                    <div className="mt-2 text-xs font-medium text-gray-500">Page {page.index + 1}</div>
+                                    <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-600 group-hover/page:text-brand-500 transition-colors">Page {page.index + 1}</div>
                                 </div>
 
                                 {/* Split Point (Scissor) */}
                                 {page.index < pages.length - 1 && (
-                                    <div className="relative mx-1 flex flex-col items-center justify-center h-full group">
+                                    <div className="relative mx-2 flex flex-col items-center justify-center h-full group/split">
                                          <button 
                                             onClick={() => toggleSplit(page.index)}
                                             className={`
-                                                w-8 h-8 rounded-full flex items-center justify-center transition-all z-10
-                                                ${isSplit ? 'bg-brand-500 text-white shadow-md scale-110' : 'bg-white text-gray-400 border border-gray-200 hover:text-brand-500 hover:border-brand-500'}
+                                                w-9 h-9 rounded-full flex items-center justify-center transition-all z-10 border-2
+                                                ${isSplit 
+                                                    ? 'bg-brand-500 text-white border-brand-500 shadow-[0_5px_15px_rgba(147,51,234,0.4)] scale-110' 
+                                                    : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-100 dark:border-gray-700 hover:text-brand-500 hover:border-brand-500 hover:scale-105'
+                                                }
                                             `}
                                             title="Click to split here"
                                          >
@@ -383,7 +386,7 @@ const SplitPdf: React.FC = () => {
                                          </button>
                                          
                                          {/* Visual Divider Line */}
-                                         <div className={`absolute top-0 bottom-0 w-0.5 border-l-2 border-dashed h-[120%] -z-0 transition-colors ${isSplit ? 'border-brand-500 opacity-100' : 'border-gray-300 opacity-0 group-hover:opacity-50'}`}></div>
+                                         <div className={`absolute top-0 bottom-0 w-0.5 border-l-2 border-dashed h-[150%] -z-0 transition-all ${isSplit ? 'border-brand-500 opacity-100' : 'border-gray-300 dark:border-gray-700 opacity-0 group-hover/split:opacity-50'}`}></div>
                                     </div>
                                 )}
                             </div>
@@ -394,32 +397,15 @@ const SplitPdf: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="bg-[#fff9e6] border-t border-orange-100 p-4 sticky bottom-0 z-40">
+        <div className="bg-[#fff9e6] dark:bg-gray-900 border-t border-orange-100 dark:border-gray-800 p-5 sticky bottom-0 z-40 shadow-[0_-10px_50px_rgba(0,0,0,0.05)] transition-colors">
              <div className="max-w-md mx-auto">
-                 {processing && (
-                    <div className="mb-3">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Processing...</span>
-                            <span>{progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-brand-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                        </div>
-                    </div>
-                 )}
                  <button 
                      onClick={handleSplit}
                      disabled={processing || splitPoints.size === 0}
-                     className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg shadow-md flex items-center justify-center text-lg transition-colors"
+                     className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-black py-4 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-black/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-1 active:translate-y-0"
                  >
-                     {processing ? (
-                         <>
-                             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                             Processing...
-                         </>
-                     ) : (
-                         `Split PDF (${splitPoints.size + 1} parts)`
-                     )}
+                     {processing ? <Loader2 className="w-7 h-7 animate-spin" /> : <Scissors className="w-7 h-7" />}
+                     Split PDF ({splitPoints.size + 1} parts)
                  </button>
              </div>
         </div>

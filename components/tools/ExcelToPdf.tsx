@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 const ExcelToPdf: React.FC = () => {
   const { t } = useLanguage();
@@ -64,7 +65,6 @@ const ExcelToPdf: React.FC = () => {
       const workbook = lib.read(arrayBuffer, { type: 'array' });
       
       // Initialize PDF (A4 Size)
-      // A4 Size in pts: 595.28 x 841.89
       const doc = new jsPDF({ 
           orientation: orientation,
           unit: 'pt',
@@ -77,13 +77,11 @@ const ExcelToPdf: React.FC = () => {
       const contentWidth = pageWidth - (margin * 2);
       const contentHeight = pageHeight - (margin * 2);
 
-      // Create a visible container off-screen for rendering
-      // We need it visible for html2canvas to render correctly, but we hide it from user view
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.top = '0';
-      container.style.left = '-9999px'; // Move off-screen
-      container.style.width = 'fit-content'; // Allow table to take natural width
+      container.style.left = '-9999px'; 
+      container.style.width = 'fit-content'; 
       container.style.backgroundColor = '#ffffff';
       container.style.padding = '0';
       container.style.margin = '0';
@@ -95,13 +93,10 @@ const ExcelToPdf: React.FC = () => {
           const sheetName = workbook.SheetNames[i];
           const ws = workbook.Sheets[sheetName];
 
-          // Check if sheet is empty
           if (!ws['!ref']) continue;
 
-          // Convert sheet to HTML table
           const html = lib.utils.sheet_to_html(ws, { id: `table-${i}` });
 
-          // Excel-like styling
           const css = `
             <style>
               table { 
@@ -122,24 +117,12 @@ const ExcelToPdf: React.FC = () => {
             </style>
           `;
 
-          // Inject HTML into container to measure
           container.innerHTML = css + html;
           const table = container.querySelector('table');
           if (!table) continue;
 
-          // 1. Calculate Scale Factor
-          // We assume 1px on screen ~ 0.75pt in PDF, but simplify by using ratios.
-          // html2canvas renders at browser PPI (usually 96).
-          // We need to fit the table width (px) into contentWidth (pt).
-          
           const tableRect = table.getBoundingClientRect();
           const tableWidthPx = tableRect.width;
-          
-          // Determine scale to fit width
-          // If table is smaller than page, we can keep it 1:1 or scale up slightly? 
-          // Usually better to just scale down if too big.
-          // PDF unit is pt. 1px = 0.75pt approx.
-          // Let's convert PDF content width to pixels for comparison (approx)
           const pdfContentWidthPx = contentWidth * (96 / 72); 
 
           let scale = 1.0;
@@ -147,85 +130,55 @@ const ExcelToPdf: React.FC = () => {
               scale = pdfContentWidthPx / tableWidthPx;
           }
 
-          // Calculate max height per page in Pixels (taking scale into account)
-          // Available height (pt) -> convert to source pixels
-          // sourcePixels = availablePt * (96/72) / scale
           const maxPageHeightPx = (contentHeight * (96 / 72)) / scale;
-
-          // 2. Pagination Loop
           const rows = Array.from(table.querySelectorAll('tr'));
           if (rows.length === 0) continue;
 
-          // We'll process rows in batches that fit on a page
-          // We need to clone the table structure for each page
-          const tbody = table.querySelector('tbody') || table;
-          
           let currentRow = 0;
           while (currentRow < rows.length) {
-              // Start a new page batch
               const pageRows: HTMLElement[] = [];
               let currentBatchHeight = 0;
 
-              // Always add at least one row to avoid infinite loop
               pageRows.push(rows[currentRow]);
               currentBatchHeight += rows[currentRow].getBoundingClientRect().height;
               currentRow++;
 
-              // Add more rows until full
               while (currentRow < rows.length) {
                   const rowHeight = rows[currentRow].getBoundingClientRect().height;
                   if (currentBatchHeight + rowHeight > maxPageHeightPx) {
-                      break; // Page full
+                      break; 
                   }
                   pageRows.push(rows[currentRow]);
                   currentBatchHeight += rowHeight;
                   currentRow++;
               }
 
-              // Render this batch
-              // Create a temporary table just for this page
               const pageContainer = document.createElement('div');
               pageContainer.innerHTML = css;
-              const pageTable = table.cloneNode(false) as HTMLElement; // Clone table tag
+              const pageTable = table.cloneNode(false) as HTMLElement; 
               const pageTbody = document.createElement('tbody');
               pageTable.appendChild(pageTbody);
               
               pageRows.forEach(r => {
-                  // Must clone deep to keep cells
                   pageTbody.appendChild(r.cloneNode(true));
               });
 
               pageContainer.appendChild(pageTable);
               
-              // We render this temp container which is detached? No, html2canvas needs it attached usually for fonts
-              // Let's attach it to our main hidden container
-              container.innerHTML = ''; // Clear prev
+              container.innerHTML = ''; 
               container.appendChild(pageContainer);
 
-              // Capture
               const canvas = await html2canvas(pageContainer, {
-                  scale: 2, // High res capture
+                  scale: 2, 
                   backgroundColor: '#ffffff',
                   logging: false,
-                  width: tableWidthPx, // Force capture full width even if scaled
+                  width: tableWidthPx, 
                   windowWidth: tableWidthPx + 100
               });
 
-              // Add to PDF
               if (totalPagesAdded > 0) doc.addPage();
               
               const imgData = canvas.toDataURL('image/jpeg', 0.95);
-              // Calculate PDF dimensions
-              // We render at `scale` relative to content width
-              const imgPdfWidth = tableWidthPx * scale * (72/96); // Convert back to pts roughly
-              const imgPdfHeight = (canvas.height / 2) * (imgPdfWidth / (canvas.width / 2)); 
-
-              // Note: canvas.width is width * 2 because of scale: 2
-              // Simply: Aspect Ratio = canvas.height / canvas.width
-              // Target Width = contentWidth (if scaled to fit) or less
-              // Actually we already calculated `scale` for fitting.
-              
-              // Let's use the fit logic:
               let finalPdfWidth = tableWidthPx * (72/96); 
               if (finalPdfWidth > contentWidth) finalPdfWidth = contentWidth;
               
@@ -270,28 +223,27 @@ const ExcelToPdf: React.FC = () => {
 
   if (step === 'upload') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">{t('tool.excel-pdf.title', 'Excel to PDF')}</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">{t('tool.excel-pdf.desc', 'Convert Excel spreadsheets to PDF')}</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors duration-300">
+        <h1 className="text-4xl font-black text-gray-800 dark:text-gray-100 mb-3 text-center tracking-tight leading-tight">{t('tool.excel-pdf.title', 'Excel to PDF')}</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium max-w-xl">{t('tool.excel-pdf.desc', 'Convert Excel spreadsheets to PDF')}</p>
         
         <div className="w-full max-w-xl">
            <button 
              onClick={() => fileInputRef.current?.click()}
-             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-3 text-xl group"
+             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 transition-all flex items-center justify-center gap-4 text-2xl group transform hover:-translate-y-1"
            >
-             <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+             <FileUp className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
              {processing ? 'Reading File...' : 'Upload Excel file'}
-             {!processing && <ChevronDown className="w-5 h-5 ml-2" />}
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
+           <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4 font-bold uppercase tracking-widest">
              Or drag and drop file here
            </p>
         </div>
 
-        <div className="mt-16 max-w-2xl text-center">
-            <h3 className="font-bold text-gray-700 mb-2">How to convert Excel to PDF</h3>
-            <p className="text-sm text-gray-500">
+        <div className="mt-20 max-w-2xl text-center">
+            <h3 className="font-bold text-gray-700 dark:text-gray-300 mb-2">How to convert Excel to PDF</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
                 Upload your Excel workbook. We will convert each sheet into pages in your PDF document, preserving layout and merged cells.
             </p>
         </div>
@@ -301,57 +253,60 @@ const ExcelToPdf: React.FC = () => {
 
   if (step === 'options') {
       return (
-          <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">{t('tool.excel-pdf.title', 'Excel to PDF')}</h2>
-              <div className="mb-8 text-sm text-gray-400">Selected: {file?.name}</div>
+          <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-12 px-4 pb-24 font-sans transition-colors duration-300">
+              {processing && <ProcessingOverlay status="Converting spreadsheet to PDF..." progress={progress} />}
+              
+              <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-2 tracking-tight leading-tight">{t('tool.excel-pdf.title', 'Excel to PDF')}</h2>
+              <div className="mb-8 text-sm text-gray-500 dark:text-gray-400 font-medium">Selected: {file?.name}</div>
 
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full">
-                  <h3 className="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">
-                      <Settings className="w-5 h-5 text-brand-500" />
-                      Conversion Options
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full animate-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                      <Settings className="w-3.5 h-3.5" /> Conversion Options
                   </h3>
 
-                  <div className="mb-6">
-                      <span className="block text-sm font-medium text-gray-700 mb-2">Found Sheets:</span>
+                  <div className="mb-8">
+                      <span className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Found Sheets</span>
                       <div className="flex flex-wrap gap-2">
                           {sheetNames.map(name => (
-                              <span key={name} className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium flex items-center gap-1">
+                              <span key={name} className="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                                   <FileSpreadsheet className="w-3 h-3" /> {name}
                               </span>
                           ))}
                       </div>
                   </div>
                   
-                  <div className="mb-8">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Page Orientation</label>
-                      <div className="flex gap-4">
+                  <div className="mb-10">
+                      <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Page Orientation</label>
+                      <div className="flex bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl">
                           <button 
                               onClick={() => setOrientation('portrait')}
-                              className={`flex-1 py-3 px-4 rounded border-2 transition-all ${orientation === 'portrait' ? 'border-brand-500 bg-brand-50 text-brand-700 font-bold' : 'border-gray-200 text-gray-600 hover:border-brand-200'}`}
+                              className={`flex-1 py-4 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${orientation === 'portrait' ? 'bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-xl' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                           >
                               Portrait
                           </button>
                           <button 
                               onClick={() => setOrientation('landscape')}
-                              className={`flex-1 py-3 px-4 rounded border-2 transition-all ${orientation === 'landscape' ? 'border-brand-500 bg-brand-50 text-brand-700 font-bold' : 'border-gray-200 text-gray-600 hover:border-brand-200'}`}
+                              className={`flex-1 py-4 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${orientation === 'landscape' ? 'bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-xl' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                           >
                               Landscape
                           </button>
                       </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 mb-6 p-3 bg-blue-50 text-blue-800 rounded text-xs">
-                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                     <span>For best results, large spreadsheets will be automatically scaled to fit the page width.</span>
+                  <div className="p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl flex items-start gap-4 mb-10">
+                     <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                     <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-bold">
+                         Pro Tip: We automatically scale sheets to fit the page width and handle multi-page row splitting for you.
+                     </p>
                   </div>
 
                   <button 
                       onClick={convert}
                       disabled={processing}
-                      className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 rounded-lg shadow-md flex items-center justify-center gap-2 text-lg transition-colors disabled:opacity-70"
+                      className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70"
                   >
-                      {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-                      {processing ? `Converting... ${progress > 0 ? progress + '%' : ''}` : 'Convert to PDF'}
+                      {processing ? <Loader2 className="w-6 h-6 animate-spin" /> : <RefreshCw className="w-6 h-6" />}
+                      {processing ? `Converting... ${progress}%` : 'Generate PDF'}
                   </button>
               </div>
           </div>
@@ -360,19 +315,20 @@ const ExcelToPdf: React.FC = () => {
 
   if (step === 'success' && resultUrl) {
     return (
-      <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Your document is ready</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+      <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-colors duration-300">
+        <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 tracking-tight text-center">Your document is ready</h2>
+        <div className="bg-white dark:bg-gray-900 p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner animate-in zoom-in duration-700">
+                <Check className="w-12 h-12" />
             </div>
-            <p className="text-gray-500 mb-8">Excel converted to PDF successfully.</p>
+            <h3 className="text-xl font-black text-gray-800 dark:text-gray-100 mb-4 tracking-tight">Conversion Complete</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg font-medium leading-relaxed">Your Excel spreadsheet has been converted and paginated successfully.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`${file?.name.replace(/\.xlsx?$/, '')}.pdf`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download PDF
+                <a href={resultUrl} download={`${file?.name.replace(/\.xlsx?$/, '')}.pdf`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-4 px-10 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-lg transition-all transform hover:-translate-y-1 active:scale-95 active:translate-y-0">
+                    <Download className="w-6 h-6" /> Download PDF
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5" /> Start Over
                 </button>
             </div>
         </div>

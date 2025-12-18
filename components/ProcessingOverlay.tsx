@@ -7,28 +7,46 @@ interface ProcessingOverlayProps {
 }
 
 const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({ status, progress }) => {
-  const radius = 45;
+  const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl flex flex-col items-center justify-center transition-all duration-500 animate-in fade-in">
-      <div className="relative mb-10 scale-110 md:scale-125">
-        {/* Glow Effect */}
-        <div className="absolute inset-0 bg-brand-500/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
+    <div 
+      className="fixed inset-0 z-[100] bg-white/90 dark:bg-gray-950/90 backdrop-blur-xl flex flex-col items-center justify-center transition-all duration-500 animate-in fade-in"
+      role="alert"
+      aria-busy="true"
+    >
+      <div className="relative mb-12 scale-110 md:scale-125">
+        {/* Deep Pulsing Glow */}
+        <div className="absolute inset-0 bg-brand-500/20 blur-[60px] rounded-full scale-150 animate-pulse"></div>
         
-        {/* Background Circle */}
-        <svg className="w-48 h-48 transform -rotate-90 relative">
+        {/* Progress SVG Container */}
+        <svg className="w-56 h-56 transform -rotate-90 relative">
+          {/* Static Background Ring */}
           <circle
-            cx="96"
-            cy="96"
+            cx="112"
+            cy="112"
             r={radius}
             stroke="currentColor"
-            strokeWidth="10"
+            strokeWidth="8"
             fill="transparent"
             className="text-gray-100 dark:text-gray-800"
           />
-          {/* Progress Circle with Gradient */}
+          
+          {/* Outer Decorative Spinning Ring */}
+          <circle
+            cx="112"
+            cy="112"
+            r={radius + 12}
+            stroke="currentColor"
+            strokeWidth="1"
+            fill="transparent"
+            strokeDasharray="10 20"
+            className="text-brand-300 dark:text-brand-800 animate-[spin_8s_linear_infinite]"
+          />
+
+          {/* Actual Progress Ring with Gradient */}
           <defs>
             <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="var(--brand-400)" />
@@ -36,44 +54,56 @@ const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({ status, progress 
             </linearGradient>
           </defs>
           <circle
-            cx="96"
-            cy="96"
+            cx="112"
+            cy="112"
             r={radius}
             stroke="url(#progressGradient)"
-            strokeWidth="10"
+            strokeWidth="8"
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-500 ease-out"
+            className="transition-all duration-700 ease-out"
             strokeLinecap="round"
           />
         </svg>
         
-        {/* Percentage Text */}
+        {/* Percentage Display */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-5xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{Math.round(progress)}%</span>
-          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">Progress</span>
+          <div className="flex items-baseline">
+            <span className="text-6xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{Math.round(progress)}</span>
+            <span className="text-xl font-bold text-brand-500 ml-0.5">%</span>
+          </div>
+          <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-2">Processing</span>
         </div>
       </div>
       
-      <div className="text-center space-y-4 max-w-sm px-6">
-        <h3 className="text-2xl font-black text-gray-800 dark:text-gray-100 tracking-tight leading-tight">
-            {status}
-        </h3>
-        
-        <div className="flex justify-center gap-1.5">
-            {[0, 1, 2].map((i) => (
-                <span 
-                    key={i} 
-                    className="w-2.5 h-2.5 bg-brand-500 rounded-full animate-bounce" 
-                    style={{ animationDelay: `${i * 150}ms` }}
-                />
-            ))}
+      <div className="text-center space-y-6 max-w-sm px-8">
+        <div className="space-y-2">
+            <h3 className="text-2xl font-black text-gray-800 dark:text-gray-100 tracking-tight leading-tight animate-in slide-in-from-bottom-2 duration-700">
+                {status}
+            </h3>
+            <div className="flex justify-center gap-2">
+                {[0, 1, 2].map((i) => (
+                    <span 
+                        key={i} 
+                        className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" 
+                        style={{ animationDelay: `${i * 200}ms` }}
+                    />
+                ))}
+            </div>
         </div>
         
-        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium pt-2">
-            Please keep this tab open while we process your request. Our servers are working hard to ensure quality.
-        </p>
+        <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 transition-colors">
+            <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold leading-relaxed">
+                Almost there! We're handling the heavy lifting securely on our servers. Your privacy is our priority.
+            </p>
+        </div>
+      </div>
+
+      {/* Reassuring Footer */}
+      <div className="absolute bottom-12 flex items-center gap-2 text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-widest">
+         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+         Secure Encrypted Connection
       </div>
     </div>
   );

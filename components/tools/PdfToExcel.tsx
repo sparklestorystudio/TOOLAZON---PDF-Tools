@@ -1,8 +1,10 @@
+
 import React, { useState, useRef } from 'react';
 import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as XLSX from 'xlsx';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
@@ -18,6 +20,7 @@ const PdfToExcel: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +36,7 @@ const PdfToExcel: React.FC = () => {
     if (!file) return;
     setProcessing(true);
     setProgress(0);
+    setStatus('Analyzing document structure...');
 
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -42,26 +46,22 @@ const PdfToExcel: React.FC = () => {
       const workbook = XLSX.utils.book_new();
 
       for (let i = 1; i <= pdf.numPages; i++) {
+          setStatus(`Extracting data from Page ${i} of ${pdf.numPages}...`);
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
           
-          // Basic heuristic to group text into rows
-          // 1. Get items with Y coordinates
-          // Item structure: { str: string, transform: [a, b, c, d, x, y] ... }
           const items = textContent.items.map((item: any) => ({
               text: item.str,
               x: item.transform[4],
-              y: item.transform[5], // PDF coordinates (0 at bottom)
+              y: item.transform[5], 
               width: item.width
           })).filter(item => item.text.trim() !== '');
 
-          // 2. Sort by Y (Descending because PDF Y=0 is bottom) then X
           items.sort((a, b) => {
-              if (Math.abs(a.y - b.y) > 5) return b.y - a.y; // Different rows
-              return a.x - b.x; // Same row, sort by column
+              if (Math.abs(a.y - b.y) > 5) return b.y - a.y; 
+              return a.x - b.x; 
           });
 
-          // 3. Group into rows
           const rows: any[][] = [];
           if (items.length > 0) {
               let currentRow: any[] = [];
@@ -69,12 +69,10 @@ const PdfToExcel: React.FC = () => {
 
               for (const item of items) {
                   if (Math.abs(item.y - currentY) > 5) {
-                      // New row
                       rows.push(currentRow);
                       currentRow = [];
                       currentY = item.y;
                   }
-                  // Add to current row
                   currentRow.push(item.text);
               }
               if (currentRow.length > 0) rows.push(currentRow);
@@ -83,12 +81,13 @@ const PdfToExcel: React.FC = () => {
           const worksheet = XLSX.utils.aoa_to_sheet(rows);
           XLSX.utils.book_append_sheet(workbook, worksheet, `Page ${i}`);
           
-          setProgress(Math.round((i / pdf.numPages) * 100));
+          setProgress(Math.round((i / pdf.numPages) * 90));
       }
 
-      // Generate file
+      setStatus('Finalizing Excel file...');
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      setProgress(100);
       setResultUrl(URL.createObjectURL(blob));
       setStep('success');
 
@@ -109,21 +108,20 @@ const PdfToExcel: React.FC = () => {
 
   if (step === 'upload') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">{t('tool.pdf-excel.title')}</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">{t('tool.pdf-excel.desc')}</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors duration-300">
+        <h1 className="text-4xl font-black text-gray-800 dark:text-gray-100 mb-3 text-center tracking-tight leading-tight">{t('tool.pdf-excel.title')}</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium max-w-xl">{t('tool.pdf-excel.desc')}</p>
         
         <div className="w-full max-w-xl">
            <button 
              onClick={() => fileInputRef.current?.click()}
-             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-3 text-xl group"
+             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 transition-all flex items-center justify-center gap-4 text-2xl group transform hover:-translate-y-1"
            >
-             <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+             <FileSpreadsheet className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
              Upload PDF file
-             <ChevronDown className="w-5 h-5 ml-2" />
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
+           <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4 font-bold uppercase tracking-widest">
              Or drag and drop file here
            </p>
         </div>
@@ -133,37 +131,42 @@ const PdfToExcel: React.FC = () => {
 
   if (step === 'options') {
       return (
-          <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">{t('tool.pdf-excel.title')}</h2>
-              <div className="mb-8 text-sm text-gray-400">Selected: {file?.name}</div>
+          <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-12 px-4 pb-24 font-sans transition-colors duration-300">
+              {processing && <ProcessingOverlay status={status} progress={progress} />}
+              
+              <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-2 tracking-tight leading-tight">{t('tool.pdf-excel.title')}</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-10 font-medium">Selected: <span className="text-gray-800 dark:text-gray-200">{file?.name}</span></p>
 
-              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-lg w-full text-center">
-                  <div className="mb-8">
-                       <FileSpreadsheet className="w-16 h-16 text-green-600 mx-auto mb-4" />
-                       <p className="text-gray-600">Extract data and tables to Excel format.</p>
-                       <div className="mt-4 p-3 bg-yellow-50 text-yellow-800 text-sm rounded flex items-start gap-2 text-left">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span>Complex table layouts may require manual adjustment after conversion.</span>
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-lg w-full text-center animate-in slide-in-from-bottom-4 duration-500">
+                  <div className="mb-10">
+                       <div className="w-24 h-24 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                           <FileSpreadsheet className="w-12 h-12" />
+                       </div>
+                       <h4 className="text-xl font-black text-gray-800 dark:text-gray-100 mb-2">Ready to convert</h4>
+                       <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium px-4">Our engine will extract tabular data from your PDF and generate a multi-sheet XLSX file.</p>
+                       
+                       <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/50 rounded-2xl flex items-start gap-3 text-left">
+                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400 font-bold leading-relaxed">Complex layouts or scanned documents without OCR might need manual cleanup in Excel.</p>
                        </div>
                   </div>
 
-                  {processing && (
-                      <div className="mb-6">
-                           <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-200 mb-2">
-                               <div className="bg-brand-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                           </div>
-                           <p className="text-xs text-gray-500">Extracting Data... {progress}%</p>
-                      </div>
-                  )}
-
-                  <button 
-                      onClick={convert}
-                      disabled={processing}
-                      className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 rounded-lg shadow-md flex items-center justify-center gap-2 text-lg transition-colors disabled:opacity-70"
-                  >
-                      {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-                      {processing ? 'Converting...' : 'Convert to Excel'}
-                  </button>
+                  <div className="flex flex-col gap-3">
+                      <button 
+                          onClick={convert}
+                          disabled={processing}
+                          className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70"
+                      >
+                          {processing ? <Loader2 className="w-6 h-6 animate-spin" /> : <RefreshCw className="w-6 h-6" />}
+                          Convert to Excel
+                      </button>
+                      <button 
+                          onClick={reset}
+                          className="w-full py-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm font-bold uppercase tracking-widest transition-colors"
+                      >
+                          Cancel
+                      </button>
+                  </div>
               </div>
           </div>
       );
@@ -171,19 +174,20 @@ const PdfToExcel: React.FC = () => {
 
   if (step === 'success' && resultUrl) {
     return (
-      <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Your spreadsheet is ready</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+      <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-colors duration-300">
+        <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 tracking-tight">Your spreadsheet is ready</h2>
+        <div className="bg-white dark:bg-gray-900 p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner animate-in zoom-in duration-700">
+                <Check className="w-12 h-12" />
             </div>
-            <p className="text-gray-500 mb-8">PDF data extracted successfully.</p>
+            <h3 className="text-xl font-black text-gray-800 dark:text-gray-100 mb-3 tracking-tight">Export Successful</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg font-medium leading-relaxed">The extracted data is now formatted as an Excel workbook.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`${file?.name.replace('.pdf', '')}.xlsx`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download Excel
+                <a href={resultUrl} download={`${file?.name.replace('.pdf', '')}.xlsx`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-4 px-10 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-lg transition-all transform hover:-translate-y-1 active:scale-95 active:translate-y-0">
+                    <Download className="w-6 h-6" /> Download Excel
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5" /> Start Over
                 </button>
             </div>
         </div>

@@ -45,19 +45,27 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-// Fix: Using named import 'Component' and correctly applying generics to ensure 'props' is recognized by the TypeScript compiler
+/**
+ * ErrorBoundary component to catch rendering errors and show a fallback UI.
+ * Explicitly use named Component import and property initialization to resolve TypeScript inheritance errors.
+ */
+// Fix inheritance by using named Component import
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = { hasError: false };
+  // Use property initialization for state to resolve "Property 'state' does not exist" errors
+  public state: ErrorBoundaryState = {
+    hasError: false
+  };
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: any, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  render() {
+  public render() {
+    // Accessing state from the component instance
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 flex-col p-4 text-center font-sans">
@@ -73,7 +81,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // Fix: Correctly accessing children from props now that the class inheritance is properly resolved
+    // Accessing props from the component instance
     return this.props.children;
   }
 }
@@ -155,7 +163,7 @@ const App: React.FC = () => {
                 <CreateForms />
                 ) : currentView === 'unlock-pdf' ? (
                 <UnlockPdf />
-                ) : currentView === 'protect-pdf' ? (
+                ) : currentView === 'this-protect-pdf' || currentView === 'protect-pdf' ? (
                 <ProtectPdf />
                 ) : currentView === 'watermark-pdf' ? (
                 <WatermarkPdf />

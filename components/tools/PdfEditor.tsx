@@ -4,7 +4,7 @@ import {
   FileUp, ChevronDown, Check, Loader2, Type, Link as LinkIcon, Image as ImageIcon, 
   PenTool, Eraser, Undo, Trash2, RotateCw, RotateCcw, PlusCircle,
   Download, RefreshCw, X, Square, Circle, Minus, Save, Bold, Italic,
-  ZoomIn, ZoomOut, Highlighter, MousePointer2, CheckSquare, Move, Copy, Palette, Plus, Hand, Search, ArrowLeft, ArrowRight, Underline
+  ZoomIn, ZoomOut, Highlighter, MousePointer2, CheckSquare, Move, Copy, Palette, Plus, Hand, Search, ArrowLeft, ArrowRight, Underline, MoreHorizontal, Wand2
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
@@ -129,86 +129,86 @@ const FloatingToolbar: React.FC<{
 
     return (
         <div 
-            className={`absolute ${isNearTop ? 'top-full mt-2' : 'bottom-full mb-2'} left-1/2 -translate-x-1/2 z-[110] flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 p-1.5 min-w-max pointer-events-auto ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100`}
+            className={`absolute ${isNearTop ? 'top-full mt-3' : 'bottom-full mb-3'} left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 bg-zinc-900 dark:bg-zinc-800 text-white rounded-xl shadow-2xl p-1.5 min-w-max pointer-events-auto ring-1 ring-white/10 animate-in fade-in zoom-in-95 ${isNearTop ? 'slide-in-from-top-2' : 'slide-in-from-bottom-2'} duration-200 ease-out`}
             onMouseDown={handleMouseDown} 
         >
-            <button 
-                onClick={() => onStyleChange('weight', currentStyle.weight === 'bold' ? 'normal' : 'bold')}
-                className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors ${currentStyle.weight === 'bold' ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-400' : ''}`}
-                title="Bold"
-            >
-                <Bold className="w-4 h-4" />
-            </button>
-            <button 
-                onClick={() => onStyleChange('style', currentStyle.style === 'italic' ? 'normal' : 'italic')}
-                className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors ${currentStyle.style === 'italic' ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-400' : ''}`}
-                title="Italic"
-            >
-                <Italic className="w-4 h-4" />
-            </button>
-            <button 
-                onClick={() => onStyleChange('decoration', currentStyle.decoration === 'underline' ? 'none' : 'underline')}
-                className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors ${currentStyle.decoration === 'underline' ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-400' : ''}`}
-                title="Underline"
-            >
-                <Underline className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-0.5 px-0.5">
+                <button 
+                    onClick={() => onStyleChange('weight', currentStyle.weight === 'bold' ? 'normal' : 'bold')}
+                    className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${currentStyle.weight === 'bold' ? 'bg-brand-500 text-white' : 'text-zinc-300'}`}
+                    title="Bold"
+                >
+                    <Bold className="w-4 h-4" />
+                </button>
+                <button 
+                    onClick={() => onStyleChange('style', currentStyle.style === 'italic' ? 'normal' : 'italic')}
+                    className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${currentStyle.style === 'italic' ? 'bg-brand-500 text-white' : 'text-zinc-300'}`}
+                    title="Italic"
+                >
+                    <Italic className="w-4 h-4" />
+                </button>
+                <button 
+                    onClick={() => onStyleChange('decoration', currentStyle.decoration === 'underline' ? 'none' : 'underline')}
+                    className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${currentStyle.decoration === 'underline' ? 'bg-brand-500 text-white' : 'text-zinc-300'}`}
+                    title="Underline"
+                >
+                    <Underline className="w-4 h-4" />
+                </button>
+            </div>
             
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1.5"></div>
+            <div className="h-6 w-px bg-white/10 mx-0.5"></div>
 
-            <div className="flex items-center text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/50 rounded-md px-1 py-0.5 border border-gray-100 dark:border-gray-700">
-                <div className="flex items-center">
-                    <button 
-                        onMouseDown={handleMouseDown}
-                        onClick={() => onStyleChange('size', Math.max(4, currentStyle.size - 1))}
-                        className="p-1 hover:bg-white dark:hover:bg-gray-800 rounded transition-colors"
-                    >
-                        <Minus className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                    </button>
-                    <input 
-                        type="number" 
-                        value={Math.round(currentStyle.size)} 
-                        onChange={(e) => onStyleChange('size', Number(e.target.value))}
-                        className="w-10 text-[11px] font-bold text-center border-none focus:ring-0 p-0 bg-transparent text-gray-800 dark:text-gray-100"
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
-                    <button 
-                        onMouseDown={handleMouseDown}
-                        onClick={() => onStyleChange('size', Math.min(144, currentStyle.size + 1))}
-                        className="p-1 hover:bg-white dark:hover:bg-gray-800 rounded transition-colors"
-                    >
-                        <Plus className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                    </button>
-                </div>
+            <div className="flex items-center bg-black/30 rounded-lg px-1 py-0.5 border border-white/5">
+                <button 
+                    onMouseDown={handleMouseDown}
+                    onClick={() => onStyleChange('size', Math.max(4, currentStyle.size - 1))}
+                    className="p-1 hover:bg-white/10 rounded transition-colors text-zinc-400 hover:text-white"
+                >
+                    <Minus className="w-3.5 h-3.5" />
+                </button>
+                <input 
+                    type="number" 
+                    value={Math.round(currentStyle.size)} 
+                    onChange={(e) => onStyleChange('size', Number(e.target.value))}
+                    className="w-9 text-xs font-bold text-center border-none focus:ring-0 p-0 bg-transparent text-white"
+                    onMouseDown={(e) => e.stopPropagation()}
+                />
+                <button 
+                    onMouseDown={handleMouseDown}
+                    onClick={() => onStyleChange('size', Math.min(144, currentStyle.size + 1))}
+                    className="p-1 hover:bg-white/10 rounded transition-colors text-zinc-400 hover:text-white"
+                >
+                    <Plus className="w-3.5 h-3.5" />
+                </button>
             </div>
 
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1.5"></div>
+            <div className="h-6 w-px bg-white/10 mx-0.5"></div>
 
             <select 
                 value={currentStyle.family}
                 onChange={(e) => onStyleChange('family', e.target.value)}
-                className="text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-md focus:ring-0 px-2 py-1 max-w-[120px] cursor-pointer"
+                className="text-xs font-bold text-white bg-transparent border-none focus:ring-0 px-2 py-1 max-w-[110px] cursor-pointer appearance-none hover:text-brand-400 transition-colors"
                 onMouseDown={(e) => e.stopPropagation()} 
             >
-                <option value="Helvetica">Helvetica</option>
-                <option value="Times New Roman">Times Roman</option>
-                <option value="Courier New">Courier</option>
+                <option value="Helvetica" className="bg-zinc-800">Helvetica</option>
+                <option value="Times New Roman" className="bg-zinc-800">Times Roman</option>
+                <option value="Courier New" className="bg-zinc-800">Courier</option>
             </select>
 
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1.5"></div>
+            <div className="h-6 w-px bg-white/10 mx-0.5"></div>
 
-            <div className="relative group/color">
+            <div className="relative group/color flex items-center">
                 <button 
-                    className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                    className="p-1.5 rounded-lg hover:bg-white/10 flex items-center gap-1.5 transition-colors"
                 >
-                    <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: currentStyle.color }}></div>
-                    <ChevronDown className="w-3 h-3 ml-1 text-gray-400 dark:text-gray-500" />
+                    <div className="w-4 h-4 rounded-full border border-white/20 shadow-inner" style={{ backgroundColor: currentStyle.color }}></div>
+                    <ChevronDown className="w-3 h-3 text-zinc-500" />
                 </button>
-                <div className="hidden group-hover/color:grid absolute top-full left-0 bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 p-2.5 gap-1.5 grid-cols-4 z-[120] w-36 mt-1 rounded-lg animate-in fade-in slide-in-from-top-1">
+                <div className="invisible group-hover/color:visible absolute top-full left-0 bg-zinc-900 shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/10 p-3 gap-2 grid grid-cols-4 z-[210] w-40 mt-2 rounded-xl animate-in fade-in slide-in-from-top-2">
                     {['#000000', '#FFFFFF', '#666666', '#FF0000', '#0000FF', '#008000', '#FFFF00', '#FFA500'].map(c => (
                         <button 
                             key={c} 
-                            className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-600 hover:scale-110 transition-transform shadow-sm" 
+                            className="w-7 h-7 rounded-lg border border-white/10 hover:scale-110 active:scale-95 transition-all shadow-lg" 
                             style={{ backgroundColor: c }}
                             onClick={() => onStyleChange('color', c)}
                         />
@@ -216,14 +216,16 @@ const FloatingToolbar: React.FC<{
                 </div>
             </div>
 
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1.5"></div>
+            <div className="h-6 w-px bg-white/10 mx-0.5"></div>
 
-            <button onClick={onDuplicate} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" title="Duplicate">
-                <Copy className="w-4 h-4" />
-            </button>
-            <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title="Delete">
-                <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-0.5 px-0.5">
+                <button onClick={onDuplicate} className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors" title="Duplicate">
+                    <Copy className="w-4 h-4" />
+                </button>
+                <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors" title="Delete">
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
         </div>
     );
 };
@@ -282,7 +284,6 @@ const EditableTextItem: React.FC<{
             adjustHeight();
             if (inputRef.current) {
                 inputRef.current.focus();
-                // If it was just opened by autofocus, select everything
                 if (autoFocus) {
                   inputRef.current.select();
                 } else {
@@ -333,7 +334,7 @@ const EditableTextItem: React.FC<{
 
     const handleDelete = () => {
         setIsEditing(false);
-        onSave({ newText: '' });
+        onSave({ newText: '', isDeleted: true });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -347,7 +348,7 @@ const EditableTextItem: React.FC<{
     const left = (item.viewportX || 0) * scale;
     const top = (item.viewportY || 0) * scale - (styleState.size * scale);
     
-    // Check if item is near top of page to flip toolbar
+    // Logic to ensure toolbar is visible: flip if too close to the top of container/viewport
     const isNearTop = top < 100;
 
     const cssStyle: React.CSSProperties = {
@@ -368,7 +369,9 @@ const EditableTextItem: React.FC<{
         margin: 0,
     };
 
-    const shouldCover = change !== undefined;
+    const shouldCover = change !== undefined && !change.isDeleted;
+
+    if (change?.isDeleted) return null;
 
     return (
         <div 
@@ -381,15 +384,14 @@ const EditableTextItem: React.FC<{
                 e.stopPropagation();
                 setIsEditing(true);
             }}
-            className={`absolute group pointer-events-auto rounded-sm ${isSelected ? 'ring-2 ring-sky-500 bg-sky-500/5' : 'hover:ring-1 hover:ring-sky-300'}`}
+            className={`absolute group pointer-events-auto rounded-sm transition-all ${isSelected ? 'ring-2 ring-brand-500 bg-brand-500/5 shadow-xl' : 'hover:ring-1 hover:ring-brand-400'}`}
             style={{
                 left: left,
                 top: top,
                 zIndex: isSelected || isEditing ? 100 : 20,
-                minWidth: Math.max(30, item.width * scale) + 'px',
-                minHeight: (item.height || 20) * scale + 'px',
+                minWidth: Math.max(40, item.width * scale) + 'px',
+                minHeight: (item.height || 24) * scale + 'px',
                 backgroundColor: shouldCover ? '#ffffff' : 'transparent',
-                transition: 'background-color 0.1s ease',
             }}
         >
             {isSelected && (
@@ -403,7 +405,7 @@ const EditableTextItem: React.FC<{
             )}
             
             {isEditing ? (
-                <div className="relative w-full h-full min-w-[50px] bg-white p-0.5 rounded shadow-sm overflow-visible z-[101]">
+                <div className="relative w-full h-full min-w-[50px] bg-white p-1 rounded shadow-lg overflow-visible z-[101] ring-2 ring-brand-500">
                     <textarea 
                         ref={inputRef}
                         value={val}
@@ -421,12 +423,12 @@ const EditableTextItem: React.FC<{
                             resize: 'none',
                             display: 'block',
                         }}
-                        className="select-text text-black"
+                        className="select-text text-black focus:outline-none"
                     />
                 </div>
             ) : (
-                <div style={cssStyle} className="px-0.5">
-                    {text || (isSelected ? <span className="opacity-30 italic">Type here</span> : '')}
+                <div style={cssStyle} className="px-1 py-0.5">
+                    {text || (isSelected ? <span className="opacity-30 italic text-zinc-400">Type here...</span> : '')}
                 </div>
             )}
         </div>
@@ -478,8 +480,9 @@ const AnnotationItem: React.FC<{
         width: (ann.width || 0) * scale, 
         height: (ann.height || 0) * scale,
         transform: `rotate(${ann.rotation || 0}deg)`,
-        border: isSelected && !isEditing ? '1px solid #3b82f6' : 'none',
-        zIndex: isSelected ? 50 : 40
+        border: isSelected && !isEditing ? '2px solid #9333ea' : 'none',
+        zIndex: isSelected ? 50 : 40,
+        boxShadow: isSelected ? '0 10px 30px -10px rgba(0,0,0,0.3)' : 'none'
     };
 
     if (ann.type === 'text') {
@@ -539,7 +542,7 @@ const AnnotationItem: React.FC<{
                 )}
                 
                 {isEditing ? (
-                    <div className="bg-white ring-2 ring-sky-400 p-0.5 rounded shadow-lg min-w-[50px]">
+                    <div className="bg-white ring-2 ring-brand-500 p-1 rounded-lg shadow-2xl min-w-[60px] animate-in zoom-in-95 duration-150">
                         <textarea 
                             ref={textareaRef}
                             value={ann.content || ''}
@@ -562,6 +565,7 @@ const AnnotationItem: React.FC<{
                                 minWidth: '20px',
                                 width: '100%'
                             }}
+                            className="focus:outline-none"
                         />
                     </div>
                 ) : (
@@ -575,23 +579,24 @@ const AnnotationItem: React.FC<{
                             color: ann.color, 
                             cursor: 'text',
                             whiteSpace: 'pre-wrap',
-                            border: isSelected ? '2px solid transparent' : 'none',
                         }}
-                        className={`hover:ring-1 hover:ring-sky-200 p-0.5 rounded-sm ${isSelected ? 'ring-2 ring-sky-500 bg-sky-500/5' : ''}`}
+                        className={`hover:ring-1 hover:ring-brand-300 p-1 rounded-sm transition-all ${isSelected ? 'ring-2 ring-brand-500 bg-brand-50/5 shadow-xl' : ''}`}
                     >
-                        {ann.content || (isSelected ? <span className="opacity-30 italic">Type here</span> : '')}
+                        {ann.content || (isSelected ? <span className="opacity-30 italic text-zinc-400">Type here...</span> : '')}
                     </div>
                 )}
             </div>
         );
     }
-    if (ann.type === 'image') return <img src={ann.dataUrl} style={style} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move" />;
-    if (ann.type === 'rect') return <div style={{ ...style, border: `${(ann.strokeWidth || 2) * scale}px solid ${ann.color}` }} onClick={(e) => { e.stopPropagation(); onSelect(); }} />;
-    if (ann.type === 'circle') return <div style={{ ...style, borderRadius: '50%', border: `${(ann.strokeWidth || 2) * scale}px solid ${ann.color}` }} onClick={(e) => { e.stopPropagation(); onSelect(); }} />;
-    if (ann.type === 'whiteout') return <div style={{ ...style, backgroundColor: 'white', border: '1px solid #eee' }} onClick={(e) => { e.stopPropagation(); onSelect(); }} />;
-    if (ann.type === 'link') return <div style={{ ...style, backgroundColor: 'rgba(0,0,255,0.1)', border: '1px dashed blue' }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="flex items-center justify-center text-[10px] text-blue-600 font-medium">LINK</div>;
-    if (ann.type === 'form-check') return <div style={{ ...style, fontSize: 20 * scale }} onClick={(e) => { e.stopPropagation(); onSelect(); }}>✓</div>;
-    if (ann.type === 'form-cross') return <div style={{ ...style, fontSize: 20 * scale }} onClick={(e) => { e.stopPropagation(); onSelect(); }}>✕</div>;
+    
+    // Non-text rendering...
+    if (ann.type === 'image') return <img src={ann.dataUrl} style={style} onClick={(e) => { e.stopPropagation(); onSelect(); }} className={`cursor-move rounded-sm shadow-lg ${isSelected ? 'ring-4 ring-brand-500' : ''}`} />;
+    if (ann.type === 'rect') return <div style={{ ...style, border: `${(ann.strokeWidth || 2) * scale}px solid ${ann.color}` }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move" />;
+    if (ann.type === 'circle') return <div style={{ ...style, borderRadius: '50%', border: `${(ann.strokeWidth || 2) * scale}px solid ${ann.color}` }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move" />;
+    if (ann.type === 'whiteout') return <div style={{ ...style, backgroundColor: 'white', border: '1px solid #eee' }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move shadow-sm" />;
+    if (ann.type === 'link') return <div style={{ ...style, backgroundColor: 'rgba(0,0,255,0.1)', border: '1px dashed blue' }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="flex items-center justify-center text-[10px] text-blue-600 font-bold bg-blue-50/50 cursor-move">LINK</div>;
+    if (ann.type === 'form-check') return <div style={{ ...style, fontSize: 24 * scale, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ann.color }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move">✓</div>;
+    if (ann.type === 'form-cross') return <div style={{ ...style, fontSize: 24 * scale, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ann.color }} onClick={(e) => { e.stopPropagation(); onSelect(); }} className="cursor-move">✕</div>;
     
     if (ann.type === 'path' || ann.type === 'highlight' || ann.type === 'line') {
         if (!ann.points) return null;
@@ -605,8 +610,7 @@ const AnnotationItem: React.FC<{
                     fill="none" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
-                    opacity={ann.type === 'highlight' ? 0.3 : 1
-                    }
+                    opacity={ann.type === 'highlight' ? 0.35 : 1}
                     className="pointer-events-auto cursor-pointer hover:opacity-80"
                     onClick={(e) => { e.stopPropagation(); onSelect(); }}
                 />
@@ -742,7 +746,7 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      className={`bg-white shadow-xl ${activeTool === 'hand' ? 'cursor-grab' : 'cursor-crosshair'}`}
+      className={`bg-white shadow-2xl transition-shadow ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
     >
       <canvas 
         ref={canvasRef} 
@@ -750,7 +754,7 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
         style={{ width: '100%', height: '100%' }} 
       />
       
-      {/* Invisible layer for detecting existing PDF text - only shown in cursor/text mode */}
+      {/* WYSIWYG Layer for existing text */}
       {!page.isInserted && originalDims && (activeTool === 'cursor' || activeTool === 'text') && textItems.map(item => {
           if (page.textChanges[item.id]) return null;
 
@@ -792,13 +796,15 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
                       cursor: 'text',
                       zIndex: 10,
                   }}
-                  className="hover:bg-sky-500/10 hover:ring-2 hover:ring-sky-400 transition-all rounded-sm"
-                  title="Double-click to edit"
-              />
+                  className="hover:bg-brand-500/10 hover:ring-2 hover:ring-brand-400 transition-all rounded-sm group/edit-trigger"
+                  title="Double-click to edit text"
+              >
+                  <div className="absolute -top-6 left-0 bg-brand-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded opacity-0 group-hover/edit-trigger:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Edit Text</div>
+              </div>
           );
       })}
       
-      {/* Highlights */}
+      {/* Search Highlights */}
       {pageMatches.map(match => (
           <div 
             key={match.id}
@@ -808,7 +814,7 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
                 top: match.y * page.scale,
                 width: match.width * page.scale,
                 height: match.height * page.scale,
-                backgroundColor: currentMatchId === match.id ? 'rgba(255, 165, 0, 0.5)' : 'rgba(255, 255, 0, 0.4)',
+                backgroundColor: currentMatchId === match.id ? 'rgba(255, 165, 0, 0.6)' : 'rgba(255, 255, 0, 0.4)',
                 border: currentMatchId === match.id ? '2px solid orange' : 'none',
                 zIndex: 30,
                 pointerEvents: 'none'
@@ -847,12 +853,12 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
             {(activeTool === 'annotate-pen' || activeTool === 'annotate-highlight' || activeTool === 'sign') && currentPath.length > 1 && (
                 <path 
                     d={`M ${currentPath.map(p => `${p.x * page.scale} ${p.y * page.scale}`).join(' L ')}`}
-                    stroke={activeTool === 'sign' ? 'black' : (activeTool === 'annotate-highlight' ? 'yellow' : 'blue')}
-                    strokeWidth={(activeTool === 'annotate-highlight' ? 12 : 2) * page.scale}
+                    stroke={activeTool === 'sign' ? 'black' : (activeTool === 'annotate-highlight' ? '#FFEB3B' : '#2196F3')}
+                    strokeWidth={(activeTool === 'annotate-highlight' ? 14 : 3) * page.scale}
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    opacity={activeTool === 'annotate-highlight' ? 0.3 : 1}
+                    opacity={activeTool === 'annotate-highlight' ? 0.4 : 1}
                 />
             )}
             {dragStart && currentPath.length > 0 && (activeTool.startsWith('shape-') || activeTool === 'link') && (
@@ -868,13 +874,13 @@ const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
                     const h = Math.abs(currentY - startY);
                     
                     if (activeTool === 'shape-line') {
-                         return <line x1={startX} y1={startY} x2={currentX} y2={currentY} stroke={shapeSettings.strokeColor} strokeWidth={shapeSettings.strokeWidth * page.scale} />;
+                         return <line x1={startX} y1={startY} x2={currentX} y2={currentY} stroke={shapeSettings.strokeColor} strokeWidth={shapeSettings.strokeWidth * page.scale} strokeLinecap="round" />;
                     } else if (activeTool === 'shape-circle') {
                          return <ellipse cx={x + w/2} cy={y + h/2} rx={w/2} ry={h/2} stroke={shapeSettings.strokeColor} strokeWidth={shapeSettings.strokeWidth * page.scale} fill="none" />;
                     } else if (activeTool === 'shape-rect') {
                          return <rect x={x} y={y} width={w} height={h} stroke={shapeSettings.strokeColor} strokeWidth={shapeSettings.strokeWidth * page.scale} fill="none" />;
                     } else if (activeTool === 'link') {
-                         return <rect x={x} y={y} width={w} height={h} stroke="blue" strokeWidth={1} fill="rgba(0,0,255,0.1)" strokeDasharray="4" />;
+                         return <rect x={x} y={y} width={w} height={h} stroke="#3b82f6" strokeWidth={1.5} fill="rgba(59, 130, 246, 0.1)" strokeDasharray="4 2" />;
                     }
                     return null;
                 })()
@@ -1175,26 +1181,6 @@ const PdfEditor: React.FC = () => {
       updatePages(newPages);
   };
 
-  const deleteSelected = () => {
-      if (selectedPageIdx === null || !selectedId) return;
-      const newPages = [...pages];
-      const page = newPages[selectedPageIdx];
-      page.annotations = page.annotations.filter(a => a.id !== selectedId);
-      updatePages(newPages);
-      setSelectedId(null);
-  };
-
-  const updateSelectedAnnotation = (updates: Partial<Annotation>) => {
-      if (selectedPageIdx === null || !selectedId) return;
-      const newPages = [...pages];
-      const page = newPages[selectedPageIdx];
-      const annIdx = page.annotations.findIndex(a => a.id === selectedId);
-      if (annIdx !== -1) {
-          page.annotations[annIdx] = { ...page.annotations[annIdx], ...updates };
-          updatePages(newPages);
-      }
-  };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
           const file = e.target.files[0];
@@ -1319,7 +1305,7 @@ const PdfEditor: React.FC = () => {
           const newAnn: Annotation = {
                id: Math.random().toString(),
                type: activeTool,
-               x: x - 10, y: y - 10, width: 20, height: 20,
+               x: x - 10, y: y - 10, width: 24, height: 24,
                color: '#000000'
            };
            const newPages = [...pages];
@@ -1358,8 +1344,8 @@ const PdfEditor: React.FC = () => {
               type: activeTool === 'annotate-highlight' ? 'highlight' : 'path',
               x: 0, y: 0,
               points: currentPath,
-              color: activeTool === 'sign' ? 'black' : (activeTool === 'annotate-highlight' ? 'yellow' : 'blue'),
-              strokeWidth: activeTool === 'annotate-highlight' ? 12 : 2
+              color: activeTool === 'sign' ? 'black' : (activeTool === 'annotate-highlight' ? '#FFEB3B' : '#2196F3'),
+              strokeWidth: activeTool === 'annotate-highlight' ? 14 : 3
           };
           newPages[pageIndex].annotations.push(newAnn);
           updatePages(newPages);
@@ -1379,7 +1365,7 @@ const PdfEditor: React.FC = () => {
                   y: activeTool === 'shape-line' ? dragStart.y : y,
                   width: activeTool === 'shape-line' ? 0 : width,
                   height: activeTool === 'shape-line' ? 0 : height,
-                  color: activeTool === 'link' ? 'rgba(0,0,255,0.2)' : shapeSettings.strokeColor,
+                  color: activeTool === 'link' ? '#3b82f6' : shapeSettings.strokeColor,
                   strokeWidth: shapeSettings.strokeWidth,
                   points: activeTool === 'shape-line' ? [{x: dragStart.x, y: dragStart.y}, {x: endPoint.x, y: endPoint.y}] : undefined,
                   url: activeTool === 'link' ? 'https://' : undefined
@@ -1436,6 +1422,16 @@ const PdfEditor: React.FC = () => {
               pdfPage.setRotation(degrees(currentRotation + pageState.rotation));
 
               Object.values(pageState.textChanges).forEach((change: TextChange) => {
+                   if (change.isDeleted) {
+                        pdfPage.drawRectangle({
+                            x: change.x,
+                            y: change.y - (change.height * 0.2), 
+                            width: change.width,
+                            height: change.height * 1.2, 
+                            color: rgb(1,1,1)
+                        });
+                        return;
+                   }
                    if (change.newText !== change.originalText || change.fontWeight || change.fontStyle || change.textDecoration || change.color || change.fontSize || change.isNew) {
                        if (!change.isNew || (change.isNew && change.newText !== change.originalText)) {
                            pdfPage.drawRectangle({
@@ -1509,8 +1505,8 @@ const PdfEditor: React.FC = () => {
                            pdfPage.drawLine({
                                start: { x: ann.points[j].x, y: height - ann.points[j].y },
                                end: { x: ann.points[j+1].x, y: height - ann.points[j+1].y },
-                               thickness: ann.strokeWidth || 2, color: annColor,
-                               opacity: ann.type === 'highlight' ? 0.3 : 1
+                               thickness: ann.strokeWidth || 3, color: annColor,
+                               opacity: ann.type === 'highlight' ? 0.35 : 1
                            });
                       }
                   } else if (ann.type === 'line' && ann.points && ann.points.length > 1) {
@@ -1535,11 +1531,11 @@ const PdfEditor: React.FC = () => {
                       });
                   } else if (ann.type === 'form-check') {
                        pdfPage.drawText('✓', {
-                           x: ann.x, y: height - ann.y - 14, size: 20, font: helvetica, color: annColor
+                           x: ann.x, y: height - ann.y - 18, size: 24, font: helvetica, color: annColor
                        });
                   } else if (ann.type === 'form-cross') {
                        pdfPage.drawText('✕', {
-                           x: ann.x, y: height - ann.y - 14, size: 20, font: helvetica, color: annColor
+                           x: ann.x, y: height - ann.y - 18, size: 24, font: helvetica, color: annColor
                        });
                   }
               }
@@ -1579,25 +1575,24 @@ const PdfEditor: React.FC = () => {
           onClick={onClick}
           title={tooltip}
           className={`
-              flex items-center gap-2 px-4 py-2.5 rounded text-sm font-semibold transition-all border whitespace-nowrap
+              flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border
               ${active 
-                  ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-300 dark:border-sky-800 shadow-sm' 
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-transparent dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-sky-600 dark:hover:text-sky-400'
+                  ? 'bg-brand-500 text-white border-brand-500 shadow-[0_8px_20px_-5px_rgba(147,51,234,0.4)]' 
+                  : 'bg-white dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-100 dark:border-zinc-700 hover:border-brand-200 dark:hover:border-brand-900 hover:text-brand-600'
               }
           `}
       >
-          <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-sky-500'}`} />
+          <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-white' : 'text-zinc-400'}`} />
           <span>{label}</span>
           {dropdown && <ChevronDown className={`w-3 h-3 ml-0.5 opacity-50 transition-transform ${active ? 'rotate-180' : ''}`} />}
       </button>
   );
 
   const renderSejdaToolbar = () => (
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-[60px] z-40 shadow-sm py-2 transition-colors duration-300">
-          <div className="max-w-[1440px] mx-auto px-6 flex items-center gap-2 flex-wrap min-h-[44px]">
+      <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 sticky top-[70px] z-50 py-3 transition-all">
+          <div className="max-w-[1440px] mx-auto px-6 flex items-center gap-3 overflow-x-auto no-scrollbar min-h-[48px]">
               
-              {/* NAVIGATION GROUP */}
-              <div className="flex bg-gray-50/80 dark:bg-gray-800/80 rounded-xl p-1 border border-gray-100 dark:border-gray-700 items-center">
+              <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-1 gap-1 items-center border border-zinc-200 dark:border-zinc-700 shadow-sm">
                   <ToolbarButton 
                       icon={MousePointer2} label="Select" active={activeTool === 'cursor'} 
                       onClick={() => setActiveTool('cursor')} 
@@ -1610,10 +1605,9 @@ const PdfEditor: React.FC = () => {
                   />
               </div>
 
-              <div className="hidden sm:block h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
 
-              {/* CONTENT GROUP */}
-              <div className="flex gap-1 items-center">
+              <div className="flex gap-2 items-center">
                   <ToolbarButton 
                       icon={Type} label="Text" active={activeTool === 'text'} 
                       onClick={() => setActiveTool(activeTool === 'text' ? 'cursor' : 'text')} 
@@ -1626,35 +1620,33 @@ const PdfEditor: React.FC = () => {
                   />
                   <div className="relative group">
                       <ToolbarButton icon={ImageIcon} label="Images" dropdown onClick={() => {}} active={activeTool === 'image'} tooltip="Insert an image" />
-                      <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
-                           <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><FileUp className="w-4 h-4 text-sky-500 dark:text-sky-400"/> Upload Image</button>
+                      <div className="absolute top-full left-0 mt-2 bg-zinc-900 shadow-2xl border border-white/10 rounded-2xl p-2 invisible group-hover:visible min-w-[200px] z-[60] animate-in fade-in slide-in-from-top-2">
+                           <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><FileUp className="w-4 h-4 text-brand-400"/> Upload Image</button>
                       </div>
                   </div>
               </div>
 
-              <div className="hidden sm:block h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
 
-              {/* FILL & SIGN GROUP */}
-              <div className="flex gap-1 items-center">
+              <div className="flex gap-2 items-center">
                   <div className="relative group">
                       <ToolbarButton icon={PenTool} label="Sign" dropdown onClick={() => {}} active={activeTool === 'sign'} tooltip="Sign document" />
-                       <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
-                           <button onClick={() => setActiveTool('sign')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><PenTool className="w-4 h-4 text-sky-500 dark:text-sky-400"/> New Signature</button>
+                       <div className="absolute top-full left-0 mt-2 bg-zinc-900 shadow-2xl border border-white/10 rounded-2xl p-2 invisible group-hover:visible min-w-[200px] z-[60] animate-in fade-in slide-in-from-top-2">
+                           <button onClick={() => setActiveTool('sign')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><PenTool className="w-4 h-4 text-brand-400"/> New Signature</button>
                        </div>
                   </div>
                   <div className="relative group">
                       <ToolbarButton icon={CheckSquare} label="Forms" dropdown onClick={() => {}} active={activeTool.startsWith('form')} tooltip="Insert form symbols" />
-                      <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
-                          <button onClick={() => setActiveTool('form-check')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><Check className="w-4 h-4 text-green-500 dark:text-green-400"/> Checkmark</button>
-                          <button onClick={() => setActiveTool('form-cross')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><X className="w-4 h-4 text-red-500 dark:text-red-400"/> Cross</button>
+                      <div className="absolute top-full left-0 mt-2 bg-zinc-900 shadow-2xl border border-white/10 rounded-2xl p-2 invisible group-hover:visible min-w-[200px] z-[60] animate-in fade-in slide-in-from-top-2">
+                          <button onClick={() => setActiveTool('form-check')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><Check className="w-4 h-4 text-green-400"/> Checkmark</button>
+                          <button onClick={() => setActiveTool('form-cross')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><X className="w-4 h-4 text-red-400"/> Cross</button>
                       </div>
                   </div>
               </div>
 
-              <div className="hidden sm:block h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
 
-              {/* DRAW & MOD GROUP */}
-              <div className="flex gap-1 items-center">
+              <div className="flex gap-2 items-center">
                   <ToolbarButton 
                       icon={Eraser} label="Whiteout" active={activeTool === 'whiteout'}
                       onClick={() => setActiveTool(activeTool === 'whiteout' ? 'cursor' : 'whiteout')} 
@@ -1662,40 +1654,36 @@ const PdfEditor: React.FC = () => {
                   />
                   <div className="relative group">
                       <ToolbarButton icon={Highlighter} label="Annotate" dropdown onClick={() => {}} active={activeTool.startsWith('annotate')} tooltip="Draw or highlight" />
-                      <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
-                          <button onClick={() => setActiveTool('annotate-highlight')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><Highlighter className="w-4 h-4 text-yellow-500 dark:text-yellow-400"/> Highlight</button>
-                          <button onClick={() => setActiveTool('annotate-pen')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><PenTool className="w-4 h-4 text-sky-500 dark:text-sky-400"/> Free Draw</button>
+                      <div className="absolute top-full left-0 mt-2 bg-zinc-900 shadow-2xl border border-white/10 rounded-2xl p-2 invisible group-hover:visible min-w-[200px] z-[60] animate-in fade-in slide-in-from-top-2">
+                          <button onClick={() => setActiveTool('annotate-highlight')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><Highlighter className="w-4 h-4 text-yellow-400"/> Highlight</button>
+                          <button onClick={() => setActiveTool('annotate-pen')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><PenTool className="w-4 h-4 text-brand-400"/> Free Draw</button>
                       </div>
                   </div>
                   <div className="relative group">
                        <ToolbarButton icon={Square} label="Shapes" dropdown onClick={() => {}} active={activeTool.startsWith('shape')} tooltip="Insert shapes" />
-                       <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 rounded-xl p-2 hidden group-hover:block min-w-[160px] z-[60]">
-                           <button onClick={() => setActiveTool('shape-rect')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><Square className="w-4 h-4 text-sky-500 dark:text-sky-400"/> Rectangle</button>
-                           <button onClick={() => setActiveTool('shape-circle')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><Circle className="w-4 h-4 text-sky-500 dark:text-sky-400"/> Ellipse</button>
-                           <button onClick={() => setActiveTool('shape-line')} className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"><Minus className="w-4 h-4 text-sky-500 dark:text-sky-400"/> Line</button>
+                       <div className="absolute top-full left-0 mt-2 bg-zinc-900 shadow-2xl border border-white/10 rounded-2xl p-2 invisible group-hover:visible min-w-[200px] z-[60] animate-in fade-in slide-in-from-top-2">
+                           <button onClick={() => setActiveTool('shape-rect')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><Square className="w-4 h-4 text-brand-400"/> Rectangle</button>
+                           <button onClick={() => setActiveTool('shape-circle')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><Circle className="w-4 h-4 text-brand-400"/> Ellipse</button>
+                           <button onClick={() => setActiveTool('shape-line')} className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-white/10 rounded-xl text-sm font-bold text-zinc-300 hover:text-white transition-colors"><Minus className="w-4 h-4 text-brand-400"/> Line</button>
                        </div>
                   </div>
               </div>
 
-              <div className="hidden lg:block h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
-              
-              <ToolbarButton 
-                  icon={Search} label="Find" active={isSearchOpen}
-                  onClick={() => setIsSearchOpen(!isSearchOpen)} 
-                  tooltip="Find and replace text"
-              />
-
-              <div className="flex-1 min-w-[20px]"></div>
+              <div className="flex-1"></div>
               
               <div className="flex items-center gap-2">
                 <button 
                   onClick={undo} 
                   disabled={historyIndex <= 0} 
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 disabled:opacity-30 border border-sky-100 dark:border-sky-900/50 whitespace-nowrap transition-all"
-                  title="Undo last action"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 disabled:opacity-30 border border-brand-100 dark:border-brand-900 transition-all"
                 >
                     <Undo className="w-4 h-4"/> Undo
                 </button>
+                <ToolbarButton 
+                    icon={Search} label="Find" active={isSearchOpen}
+                    onClick={() => setIsSearchOpen(!isSearchOpen)} 
+                    tooltip="Find and replace text"
+                />
               </div>
           </div>
       </div>
@@ -1704,12 +1692,13 @@ const PdfEditor: React.FC = () => {
   const renderSearchPanel = () => {
       if (!isSearchOpen) return null;
       return (
-          <div className="absolute top-[135px] right-8 z-50 bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 rounded-2xl p-6 w-85 animate-in slide-in-from-top-4 transition-colors">
-              <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                      <Search className="w-4 h-4 text-sky-500 dark:text-sky-400" /> Find & Replace
+          <div className="fixed top-[135px] right-8 z-[100] bg-white dark:bg-zinc-900 shadow-[0_30px_90px_rgba(0,0,0,0.4)] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 w-85 animate-in slide-in-from-right-4 transition-all overflow-hidden">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-brand-500"></div>
+              <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-black text-zinc-800 dark:text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                      <Search className="w-4 h-4 text-brand-500" /> Find & Replace
                   </h3>
-                  <button onClick={() => setIsSearchOpen(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <button onClick={() => setIsSearchOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-white p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                       <X className="w-4 h-4" />
                   </button>
               </div>
@@ -1718,44 +1707,44 @@ const PdfEditor: React.FC = () => {
                       <input 
                           type="text" 
                           placeholder="Find text..." 
-                          className="w-full border-2 border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:border-sky-500 outline-none transition-all"
+                          className="w-full border-2 border-zinc-50 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-white rounded-2xl px-5 py-3 text-sm font-bold focus:border-brand-500 outline-none transition-all shadow-inner"
                           value={findText}
                           onChange={(e) => setFindText(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && performSearch()}
                       />
                   </div>
-                  <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                          <input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"/> Match case
+                  <div className="flex items-center gap-4 px-1">
+                      <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 cursor-pointer hover:text-brand-500 transition-colors">
+                          <input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} className="rounded text-brand-500 focus:ring-brand-500 bg-zinc-100 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 w-4 h-4"/> Case
                       </label>
-                      <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                          <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"/> Whole words
+                      <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 cursor-pointer hover:text-brand-500 transition-colors">
+                          <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} className="rounded text-brand-500 focus:ring-brand-500 bg-zinc-100 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 w-4 h-4"/> Words
                       </label>
                   </div>
                   <div>
                       <input 
                           type="text" 
                           placeholder="Replace with..." 
-                          className="w-full border-2 border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:border-sky-500 outline-none transition-all"
+                          className="w-full border-2 border-zinc-50 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-white rounded-2xl px-5 py-3 text-sm font-bold focus:border-brand-500 outline-none transition-all shadow-inner"
                           value={replaceText}
                           onChange={(e) => setReplaceText(e.target.value)}
                       />
                   </div>
                   <div className="flex items-center justify-between pt-2">
-                      <button onClick={performSearch} disabled={searchLoading} className="bg-sky-600 dark:bg-sky-500 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-sky-700 dark:hover:bg-sky-600 disabled:opacity-50 flex items-center shadow-lg shadow-sky-100 dark:shadow-sky-900/20 transition-all">
+                      <button onClick={performSearch} disabled={searchLoading} className="bg-brand-500 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-brand-600 disabled:opacity-50 flex items-center shadow-xl shadow-brand-100 dark:shadow-brand-900/20 transition-all active:scale-95">
                           {searchLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Find
                       </button>
                       {searchResults.length > 0 && (
-                          <div className="flex items-center gap-3 text-xs font-black text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">
-                              <button onClick={() => { setCurrentMatchIndex(prev => Math.max(0, prev - 1)); const p = searchResults[Math.max(0, currentMatchIndex - 1)]; if(p) { setSelectedPageIdx(p.pageIndex); document.getElementById(`page-${p.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-sky-600 dark:hover:text-sky-400"><ArrowLeft className="w-4 h-4" /></button>
-                              <span>{currentMatchIndex + 1} / {searchResults.length}</span>
-                              <button onClick={() => { setCurrentMatchIndex(prev => Math.min(searchResults.length - 1, prev + 1)); const n = searchResults[Math.min(searchResults.length - 1, currentMatchIndex + 1)]; if(n) { setSelectedPageIdx(n.pageIndex); document.getElementById(`page-${n.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-sky-600 dark:hover:text-sky-400"><ArrowRight className="w-4 h-4" /></button>
+                          <div className="flex items-center gap-3 text-[10px] font-black text-zinc-500 bg-zinc-50 dark:bg-zinc-950 px-4 py-2 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                              <button onClick={() => { setCurrentMatchIndex(prev => Math.max(0, prev - 1)); const p = searchResults[Math.max(0, currentMatchIndex - 1)]; if(p) { setSelectedPageIdx(p.pageIndex); document.getElementById(`page-${p.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-brand-600"><ArrowLeft className="w-3.5 h-3.5" /></button>
+                              <span className="min-w-[40px] text-center">{currentMatchIndex + 1} / {searchResults.length}</span>
+                              <button onClick={() => { setCurrentMatchIndex(prev => Math.min(searchResults.length - 1, prev + 1)); const n = searchResults[Math.min(searchResults.length - 1, currentMatchIndex + 1)]; if(n) { setSelectedPageIdx(n.pageIndex); document.getElementById(`page-${n.pageIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }} className="p-1 hover:text-brand-600"><ArrowRight className="w-3.5 h-3.5" /></button>
                           </div>
                       )}
                   </div>
-                  <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-                      <button onClick={performReplace} disabled={searchResults.length === 0} className="flex-1 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 px-3 py-2.5 rounded-xl text-xs font-bold transition-all">Replace</button>
-                      <button onClick={performReplaceAll} disabled={searchResults.length === 0} className="flex-1 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 px-3 py-2.5 rounded-xl text-xs font-bold transition-all">Replace All</button>
+                  <div className="flex gap-2 pt-6 mt-2 border-t border-zinc-100 dark:border-zinc-800">
+                      <button onClick={performReplace} disabled={searchResults.length === 0} className="flex-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95">Replace</button>
+                      <button onClick={performReplaceAll} disabled={searchResults.length === 0} className="flex-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95">All</button>
                   </div>
               </div>
           </div>
@@ -1765,57 +1754,57 @@ const PdfEditor: React.FC = () => {
   const renderToolProperties = () => {
       if (activeTool !== 'text' && !activeTool.startsWith('shape-')) return null;
       return (
-        <div className="bg-gray-100/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 py-3 flex justify-center z-30 animate-in slide-in-from-top-1 transition-colors">
-            <div className="flex items-center gap-4 bg-white dark:bg-gray-900 px-6 py-2.5 rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 whitespace-nowrap ring-1 ring-black/5 dark:ring-white/5">
+        <div className="bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 py-3.5 flex justify-center z-40 animate-in slide-in-from-top-2 transition-all">
+            <div className="flex items-center gap-5 bg-white dark:bg-zinc-900 px-8 py-3 rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.1)] border border-white/20 dark:border-zinc-800 whitespace-nowrap ring-1 ring-black/5">
                 {activeTool === 'text' && (
                     <>
-                        <div className="flex items-center gap-2 mr-2">
-                            <Palette className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Text Style</span>
+                        <div className="flex items-center gap-3">
+                            <Palette className="w-4 h-4 text-zinc-300" />
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Global Defaults</span>
                         </div>
-                        <select value={textSettings.fontFamily} onChange={(e) => setTextSettings({...textSettings, fontFamily: e.target.value})} className="h-10 text-sm font-semibold border-2 border-gray-50 dark:border-gray-800 rounded-xl px-3 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 focus:border-sky-500 outline-none transition-all">
+                        <select value={textSettings.fontFamily} onChange={(e) => setTextSettings({...textSettings, fontFamily: e.target.value})} className="h-11 text-sm font-bold border-2 border-zinc-50 dark:border-zinc-800 rounded-2xl px-4 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-white focus:border-brand-500 outline-none transition-all cursor-pointer">
                             <option value="Helvetica">Helvetica</option>
                             <option value="Times New Roman">Times New Roman</option>
                             <option value="Courier New">Courier</option>
                         </select>
-                        <div className="flex items-center border-2 border-gray-50 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-950 overflow-hidden h-10">
-                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.max(6, textSettings.fontSize - 1)})} className="px-3 hover:bg-white dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
-                            <input type="number" value={textSettings.fontSize} onChange={(e) => setTextSettings({...textSettings, fontSize: Number(e.target.value)})} className="w-12 text-xs font-black text-center bg-transparent border-none p-0 h-full text-gray-800 dark:text-gray-100" />
-                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.min(144, textSettings.fontSize + 1)})} className="px-3 hover:bg-white dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                        <div className="flex items-center border-2 border-zinc-50 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 overflow-hidden h-11">
+                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.max(6, textSettings.fontSize - 1)})} className="px-4 hover:bg-white dark:hover:bg-zinc-800 text-zinc-400 transition-colors"><Minus className="w-4 h-4" /></button>
+                            <input type="number" value={textSettings.fontSize} onChange={(e) => setTextSettings({...textSettings, fontSize: Number(e.target.value)})} className="w-12 text-xs font-black text-center bg-transparent border-none p-0 h-full text-zinc-800 dark:text-white" />
+                            <button onClick={() => setTextSettings({...textSettings, fontSize: Math.min(144, textSettings.fontSize + 1)})} className="px-4 hover:bg-white dark:hover:bg-zinc-800 text-zinc-400 transition-colors"><Plus className="w-4 h-4" /></button>
                         </div>
                         <div className="relative group/cp">
-                            <button className="w-10 h-10 rounded-xl border-2 border-gray-50 dark:border-gray-800 flex items-center justify-center transition-all hover:scale-105 shadow-sm" style={{ backgroundColor: textSettings.color }} />
-                            <div className="hidden group-hover/cp:grid absolute top-full left-0 bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 p-4 gap-2 grid-cols-4 z-50 w-44 mt-3 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                            <button className="w-11 h-11 rounded-2xl border-2 border-zinc-50 dark:border-zinc-800 flex items-center justify-center transition-all hover:scale-110 shadow-lg" style={{ backgroundColor: textSettings.color }} />
+                            <div className="invisible group-hover/cp:visible absolute top-full left-0 bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-100 dark:border-zinc-800 p-4 gap-2 grid grid-cols-4 z-50 w-48 mt-3 rounded-3xl animate-in fade-in slide-in-from-top-2">
                                 {['#000000', '#FFFFFF', '#666666', '#FF0000', '#0000FF', '#008000', '#FFFF00', '#FFA500'].map(c => (
-                                    <button key={c} className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600 hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: c }} onClick={() => setTextSettings({...textSettings, color: c})} />
+                                    <button key={c} className="w-9 h-9 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:scale-110 transition-all shadow-md active:scale-95" style={{ backgroundColor: c }} onClick={() => setTextSettings({...textSettings, color: c})} />
                                 ))}
                             </div>
                         </div>
-                        <div className="flex bg-gray-50 dark:bg-gray-950 rounded-xl border-2 border-gray-50 dark:border-gray-800 overflow-hidden">
-                            <button onClick={() => setTextSettings({...textSettings, fontWeight: textSettings.fontWeight === 'bold' ? 'normal' : 'bold'})} className={`h-10 w-11 flex items-center justify-center transition-all ${textSettings.fontWeight === 'bold' ? 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-400 shadow-inner' : 'text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-800'}`}><Bold className="w-4 h-4" /></button>
-                            <button onClick={() => setTextSettings({...textSettings, fontStyle: textSettings.fontStyle === 'italic' ? 'normal' : 'italic'})} className={`h-10 w-11 flex items-center justify-center transition-all ${textSettings.fontStyle === 'italic' ? 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-400 shadow-inner' : 'text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-800'}`}><Italic className="w-4 h-4" /></button>
+                        <div className="flex bg-zinc-50 dark:bg-zinc-950 rounded-2xl border-2 border-zinc-50 dark:border-zinc-800 overflow-hidden h-11">
+                            <button onClick={() => setTextSettings({...textSettings, fontWeight: textSettings.fontWeight === 'bold' ? 'normal' : 'bold'})} className={`w-12 flex items-center justify-center transition-all ${textSettings.fontWeight === 'bold' ? 'bg-brand-500 text-white shadow-xl' : 'text-zinc-400 hover:bg-white dark:hover:bg-zinc-800'}`}><Bold className="w-4 h-4" /></button>
+                            <button onClick={() => setTextSettings({...textSettings, fontStyle: textSettings.fontStyle === 'italic' ? 'normal' : 'italic'})} className={`w-12 flex items-center justify-center transition-all ${textSettings.fontStyle === 'italic' ? 'bg-brand-500 text-white shadow-xl' : 'text-zinc-400 hover:bg-white dark:hover:bg-zinc-800'}`}><Italic className="w-4 h-4" /></button>
                         </div>
                     </>
                 )}
                 {activeTool.startsWith('shape-') && (
                     <>
-                        <div className="flex items-center gap-2 mr-2">
-                            <Palette className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Shape Style</span>
+                        <div className="flex items-center gap-3">
+                            <Palette className="w-4 h-4 text-zinc-300" />
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Shape Style</span>
                         </div>
-                        <div className="relative group/scp flex items-center gap-3">
-                            <button className="w-10 h-10 rounded-xl border-2 border-gray-50 dark:border-gray-800 transition-all hover:scale-105 shadow-sm" style={{ backgroundColor: shapeSettings.strokeColor }} />
-                            <div className="hidden group-hover/scp:grid absolute top-full left-0 bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 p-4 gap-2 grid-cols-4 z-50 w-44 mt-3 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                        <div className="relative group/scp flex items-center gap-4">
+                            <button className="w-11 h-11 rounded-2xl border-2 border-zinc-50 dark:border-zinc-800 transition-all hover:scale-110 shadow-lg" style={{ backgroundColor: shapeSettings.strokeColor }} />
+                            <div className="invisible group-hover/scp:visible absolute top-full left-0 bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-100 dark:border-zinc-800 p-4 gap-2 grid grid-cols-4 z-50 w-48 mt-3 rounded-3xl animate-in fade-in slide-in-from-top-2">
                                 {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map(c => (
-                                    <button key={c} className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600 hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: c }} onClick={() => setShapeSettings({...shapeSettings, strokeColor: c})} />
+                                    <button key={c} className="w-9 h-9 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:scale-110 transition-all shadow-md active:scale-95" style={{ backgroundColor: c }} onClick={() => setShapeSettings({...shapeSettings, strokeColor: c})} />
                                 ))}
                             </div>
                         </div>
-                        <div className="h-6 w-px bg-gray-100 dark:bg-gray-700"></div>
-                        <div className="flex items-center border-2 border-gray-50 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-950 overflow-hidden h-10">
-                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.max(1, shapeSettings.strokeWidth - 1)})} className="px-3 hover:bg-white dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
-                            <span className="w-10 text-xs font-black text-center text-gray-700 dark:text-gray-300">{shapeSettings.strokeWidth}</span>
-                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.min(50, shapeSettings.strokeWidth + 1)})} className="px-3 hover:bg-white dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                        <div className="h-8 w-px bg-zinc-100 dark:bg-zinc-800"></div>
+                        <div className="flex items-center border-2 border-zinc-50 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-zinc-950 overflow-hidden h-11">
+                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.max(1, shapeSettings.strokeWidth - 1)})} className="px-4 hover:bg-white dark:hover:bg-zinc-800 text-zinc-400 transition-colors"><Minus className="w-4 h-4" /></button>
+                            <span className="w-10 text-[11px] font-black text-center text-zinc-500 dark:text-zinc-400">{shapeSettings.strokeWidth}px</span>
+                            <button onClick={() => setShapeSettings({...shapeSettings, strokeWidth: Math.min(50, shapeSettings.strokeWidth + 1)})} className="px-4 hover:bg-white dark:hover:bg-zinc-800 text-zinc-400 transition-colors"><Plus className="w-4 h-4" /></button>
                         </div>
                     </>
                 )}
@@ -1826,24 +1815,41 @@ const PdfEditor: React.FC = () => {
 
   if (step === 'upload') {
      return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors duration-300">
-            <h1 className="text-4xl font-black text-gray-800 dark:text-gray-100 mb-3 text-center tracking-tight">Online PDF Editor</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium">Professional editing, signing, and filling for free.</p>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-all duration-500">
+            <h1 className="text-5xl font-black text-zinc-800 dark:text-white mb-4 text-center tracking-tighter leading-tight">Pro PDF Editor</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 text-xl mb-12 text-center font-medium max-w-2xl leading-relaxed">
+                Unlock professional-grade editing. Modify text directly on the page, fill forms, and sign documents for free.
+            </p>
             <div className="w-full max-w-xl">
-                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 flex items-center justify-center gap-4 text-2xl group transition-all transform hover:-translate-y-1">
-                    <FileUp className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
+                <button onClick={() => fileInputRef.current?.click()} className="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-8 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(147,51,234,0.5)] flex items-center justify-center gap-4 text-3xl group transition-all transform hover:-translate-y-2 active:scale-95 active:translate-y-0">
+                    <div className="bg-white/20 p-3 rounded-2xl group-hover:rotate-12 transition-transform">
+                        <FileUp className="w-10 h-10" />
+                    </div>
                     Upload PDF file
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
             </div>
-            <div className="mt-20 max-w-3xl text-center grid md:grid-cols-2 gap-8">
-                <div className="text-left bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                    <h3 className="font-black text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2"><Type className="w-5 h-5 text-brand-500" /> Edit Existing Text</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium">Double-click any text on the page to modify it directly. Change fonts, colors, and styles instantly.</p>
+            <div className="mt-24 max-w-4xl w-full grid md:grid-cols-3 gap-8">
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="w-14 h-14 bg-brand-50 dark:bg-brand-900/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <Type className="w-7 h-7 text-brand-500" />
+                    </div>
+                    <h3 className="font-black text-xl text-zinc-800 dark:text-white mb-3 tracking-tight">WYSIWYG Editing</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed font-medium">Double-click any text to change content, fonts, and styles as if you were in Word.</p>
                 </div>
-                <div className="text-left bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                    <h3 className="font-black text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2"><PenTool className="w-5 h-5 text-brand-500" /> Fill & Sign</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium">Add signatures, checkmarks, and custom images. Perfect for processing forms and contracts online.</p>
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="w-14 h-14 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <PenTool className="w-7 h-7 text-sky-500" />
+                    </div>
+                    <h3 className="font-black text-xl text-zinc-800 dark:text-white mb-3 tracking-tight">E-Sign & Fill</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed font-medium">Add signatures and fill out form fields easily. Support for text areas, checkboxes, and more.</p>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <Save className="w-7 h-7 text-emerald-500" />
+                    </div>
+                    <h3 className="font-black text-xl text-zinc-800 dark:text-white mb-3 tracking-tight">Cloud Secure</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed font-medium">Your files are encrypted during transport and automatically deleted after processing.</p>
                 </div>
             </div>
         </div>
@@ -1852,18 +1858,20 @@ const PdfEditor: React.FC = () => {
 
   if (step === 'success' && resultUrl) {
       return (
-        <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-12 px-4 font-sans transition-colors duration-300">
-            <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 tracking-tight">Your document is ready</h2>
-            <div className="bg-white dark:bg-gray-900 p-10 rounded-3xl shadow-2xl shadow-gray-200 dark:shadow-black/20 border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
-                <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-8 animate-in zoom-in duration-700">
-                    <Check className="w-12 h-12" />
+        <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-all duration-500">
+            <h2 className="text-4xl font-black text-zinc-800 dark:text-white mb-8 tracking-tighter">Export Successful</h2>
+            <div className="bg-white dark:bg-zinc-900 p-12 rounded-[3rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 max-w-3xl w-full text-center animate-in zoom-in-95 duration-500">
+                <div className="w-28 h-28 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner animate-bounce duration-1000">
+                    <Check className="w-14 h-14" />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href={resultUrl} download={`edited_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-4 px-10 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-lg transition-all transform hover:-translate-y-1">
-                        <Download className="w-6 h-6" /> Download
+                <h3 className="text-2xl font-black text-zinc-800 dark:text-white mb-4 tracking-tight">Your edited PDF is ready</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-12 text-lg font-medium">All changes have been applied and merged into a new document.</p>
+                <div className="flex flex-col sm:flex-row gap-5 justify-center">
+                    <a href={resultUrl} download={`edited_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-5 px-12 rounded-[1.5rem] shadow-[0_15px_40px_-5px_rgba(147,51,234,0.4)] flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-2 active:scale-95 active:translate-y-0">
+                        <Download className="w-6 h-6" /> Download PDF
                     </a>
-                    <button onClick={reset} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-                        <RefreshCw className="w-5 h-5" /> Start Over
+                    <button onClick={reset} className="bg-zinc-100 dark:bg-zinc-800 border-2 border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-bold py-5 px-10 rounded-[1.5rem] hover:bg-white dark:hover:bg-zinc-700 transition-all active:scale-95">
+                        <RefreshCw className="w-5 h-5 mr-2 inline" /> Start Over
                     </button>
                 </div>
             </div>
@@ -1872,15 +1880,15 @@ const PdfEditor: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-gray-950 flex flex-col font-sans relative transition-colors duration-300">
-        {processing && <ProcessingOverlay status="Applying your changes..." progress={saveProgress} />}
+    <div className="min-h-screen bg-[#f1f3f5] dark:bg-zinc-950 flex flex-col font-sans relative transition-colors duration-300">
+        {processing && <ProcessingOverlay status="Rendering final document..." progress={saveProgress} />}
         {renderSejdaToolbar()}
         {renderToolProperties()}
         {renderSearchPanel()}
 
         <div 
             ref={scrollContainerRef}
-            className={`flex-1 flex justify-center py-12 px-4 overflow-y-auto ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            className={`flex-1 flex justify-center py-16 px-4 overflow-y-auto no-scrollbar ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : ''}`}
             onClick={() => setSelectedId(null)}
             onMouseDown={handleGlobalMouseDown}
             onMouseMove={handleGlobalMouseMove}
@@ -1890,31 +1898,26 @@ const PdfEditor: React.FC = () => {
         >
              <div className="flex flex-col items-center w-full">
                  {loading ? (
-                     <div className="flex flex-col items-center mt-32">
-                         <Loader2 className="w-12 h-12 text-brand-500 animate-spin mb-6" />
-                         <p className="text-gray-600 dark:text-gray-400 font-black tracking-tight text-xl">Preparing your document...</p>
+                     <div className="flex flex-col items-center mt-40">
+                         <Loader2 className="w-16 h-16 text-brand-500 animate-spin mb-8" />
+                         <p className="text-zinc-800 dark:text-zinc-200 font-black tracking-tight text-3xl animate-pulse">Initializing Editor...</p>
+                         <p className="text-zinc-400 mt-2 font-bold uppercase tracking-widest text-xs">Parsing Document Layers</p>
                      </div>
                  ) : (
-                     <div className="flex flex-col items-center gap-12 pb-24">
+                     <div className="flex flex-col items-center gap-20 pb-32">
                         {pages.map((page, idx) => (
                              <div key={idx} id={`page-${idx}`} className="flex flex-col items-center group/page">
-                                 <div className="flex items-center gap-3 mb-4 transition-all opacity-40 group-hover/page:opacity-100">
-                                     <span className="text-4xl text-gray-200 dark:text-gray-800 font-black group-hover/page:text-gray-400 dark:group-hover/page:text-gray-600 transition-colors">{idx + 1}</span>
-                                     <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 shadow-sm">
-                                         <button onClick={() => deletePage(idx)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 border-r border-gray-100 dark:border-gray-700 transition-colors" title="Delete Page"><Trash2 className="w-4 h-4"/></button>
-                                         <button onClick={() => zoomPage(idx, 0.1)} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-r border-gray-100 dark:border-gray-700" title="Zoom In"><ZoomIn className="w-4 h-4"/></button>
-                                         <button onClick={() => zoomPage(idx, -0.1)} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-r border-gray-100 dark:border-gray-700" title="Zoom Out"><ZoomOut className="w-4 h-4"/></button>
-                                         <button onClick={() => rotatePage(idx, 'ccw')} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-r border-gray-100 dark:border-gray-700" title="Rotate Left"><RotateCcw className="w-4 h-4"/></button>
-                                         <button onClick={() => rotatePage(idx, 'cw')} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800" title="Rotate Right"><RotateCw className="w-4 h-4"/></button>
+                                 <div className="flex items-center gap-5 mb-6 transition-all opacity-20 group-hover/page:opacity-100 scale-95 group-hover/page:scale-100">
+                                     <span className="text-6xl text-zinc-300 dark:text-zinc-800 font-black tracking-tighter">{idx + 1}</span>
+                                     <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-[1.25rem] overflow-hidden bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] ring-1 ring-black/5">
+                                         <button onClick={() => deletePage(idx)} className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 border-r border-zinc-100 dark:border-zinc-800 transition-colors" title="Delete Page"><Trash2 className="w-4 h-4"/></button>
+                                         <button onClick={() => zoomPage(idx, 0.1)} className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 border-r border-zinc-100 dark:border-zinc-800" title="Zoom In"><ZoomIn className="w-4 h-4"/></button>
+                                         <button onClick={() => zoomPage(idx, -0.1)} className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 border-r border-zinc-100 dark:border-zinc-800" title="Zoom Out"><ZoomOut className="w-4 h-4"/></button>
+                                         <button onClick={() => rotatePage(idx, 'ccw')} className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 border-r border-zinc-100 dark:border-zinc-800" title="Rotate Left"><RotateCcw className="w-4 h-4"/></button>
+                                         <button onClick={() => rotatePage(idx, 'cw')} className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800" title="Rotate Right"><RotateCw className="w-4 h-4"/></button>
                                      </div>
-                                     <button 
-                                        onClick={() => insertPage(idx)}
-                                        className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 border border-sky-100 dark:border-sky-900 rounded-xl px-4 py-2 bg-white dark:bg-gray-900 shadow-sm transition-all"
-                                     >
-                                         <PlusCircle className="w-4 h-4"/> Insert Page
-                                     </button>
                                  </div>
-                                 <div className="shadow-2xl shadow-black/10 dark:shadow-black/40 rounded-sm">
+                                 <div className="shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] dark:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.6)] rounded-[4px] ring-1 ring-black/5">
                                      <PdfPageRenderer 
                                         page={page} index={idx} file={file}
                                         activeTool={activeTool} selectedId={selectedId}
@@ -1936,7 +1939,7 @@ const PdfEditor: React.FC = () => {
                                             const newAnn: Annotation = {
                                                 id: Math.random().toString(),
                                                 type: 'text',
-                                                x: change.x + 10, y: change.y - 10, 
+                                                x: change.x + 15, y: change.y - 15, 
                                                 content: change.newText,
                                                 fontSize: change.fontSize,
                                                 fontFamily: change.fontFamily,
@@ -1963,24 +1966,24 @@ const PdfEditor: React.FC = () => {
                         ))}
                         <button 
                             onClick={() => insertPage(pages.length)}
-                            className="flex flex-col items-center justify-center gap-3 p-10 border-4 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl text-gray-400 dark:text-gray-600 hover:text-brand-500 hover:border-brand-200 dark:hover:border-brand-900 hover:bg-white dark:hover:bg-gray-900 transition-all w-[300px] group"
+                            className="flex flex-col items-center justify-center gap-4 p-16 border-4 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[3rem] text-zinc-300 dark:text-zinc-700 hover:text-brand-500 hover:border-brand-200 dark:hover:border-brand-900 hover:bg-white dark:hover:bg-zinc-900 transition-all w-[340px] group shadow-inner"
                         >
-                            <PlusCircle className="w-12 h-12 group-hover:scale-110 transition-transform"/>
-                            <span className="font-black uppercase tracking-widest text-sm">Add New Page</span>
+                            <PlusCircle className="w-16 h-16 group-hover:scale-110 group-hover:rotate-90 transition-all duration-500"/>
+                            <span className="font-black uppercase tracking-[0.2em] text-sm">Add Blank Page</span>
                         </button>
                      </div>
                  )}
              </div>
         </div>
 
-        <div className="bg-[#fff9e6] dark:bg-gray-900 border-t border-orange-100 dark:border-gray-800 p-5 sticky bottom-0 z-50 flex justify-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-colors">
+        <div className="bg-[#fff9e6] dark:bg-zinc-900 border-t border-orange-100 dark:border-zinc-800 p-6 sticky bottom-0 z-50 flex justify-center shadow-[0_-10px_50px_rgba(0,0,0,0.1)] transition-all">
              <div className="max-w-md w-full">
                  <button 
                      onClick={savePdf}
                      disabled={processing || loading}
-                     className="w-full bg-[#009b72] dark:bg-[#007b5a] hover:bg-[#008a65] disabled:opacity-70 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 dark:shadow-black/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-1"
+                     className="w-full bg-[#009b72] dark:bg-[#007b5a] hover:bg-[#008a65] disabled:opacity-70 text-white font-black py-5 rounded-[1.5rem] shadow-[0_15px_40px_-5px_rgba(0,155,114,0.4)] flex items-center justify-center gap-3 text-2xl transition-all transform hover:-translate-y-2 active:scale-95 active:translate-y-0"
                  >
-                     {processing ? <Loader2 className="w-6 h-6 animate-spin mr-1" /> : <Save className="w-6 h-6 mr-1" />}
+                     {processing ? <Loader2 className="w-7 h-7 animate-spin" /> : <Save className="w-7 h-7" />}
                      Apply changes
                  </button>
              </div>

@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, Type, AlignLeft, AlignCenter, AlignRight, LayoutTemplate, Plus } from 'lucide-react';
+import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, Type, AlignLeft, AlignCenter, AlignRight, LayoutTemplate, Plus, ArrowLeft, Layout } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
@@ -40,6 +42,7 @@ const HeaderFooterPdf: React.FC = () => {
   const [step, setStep] = useState<'upload' | 'editor' | 'success'>('upload');
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<{width: number, height: number} | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -95,17 +98,18 @@ const HeaderFooterPdf: React.FC = () => {
   const insertMacro = (macro: string, positionId: keyof HeaderFooterConfig) => {
       setConfig(prev => ({
           ...prev,
-          [positionId]: prev[positionId] + ` ${macro}`
+          [positionId]: (prev[positionId] + ` ${macro}`).trim()
       }));
   };
 
   const handleApply = async () => {
       if (!file) return;
       setProcessing(true);
+      setProgress(0);
 
       try {
           const arrayBuffer = await file.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          const pdfDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
           const pages = pdfDoc.getPages();
           const totalPages = pages.length;
 
@@ -133,7 +137,6 @@ const HeaderFooterPdf: React.FC = () => {
               if (align === 'center') drawX = x - (textWidth / 2);
               if (align === 'right') drawX = x - textWidth;
 
-              // Parse Color
               const r = parseInt(config.color.slice(1, 3), 16) / 255;
               const g = parseInt(config.color.slice(3, 5), 16) / 255;
               const b = parseInt(config.color.slice(5, 7), 16) / 255;
@@ -147,7 +150,8 @@ const HeaderFooterPdf: React.FC = () => {
               });
           };
 
-          pages.forEach((page, idx) => {
+          for (let idx = 0; idx < pages.length; idx++) {
+              const page = pages[idx];
               const { width, height } = page.getSize();
               const pageNum = idx + 1;
               const dateStr = new Date().toLocaleDateString();
@@ -159,36 +163,33 @@ const HeaderFooterPdf: React.FC = () => {
                     .replace(/\[date\]/g, dateStr);
               };
 
-              // Header Y position (top down margin)
               const headerY = height - marginTop - fontSize;
-              // Footer Y position (bottom up margin)
               const footerY = marginBottom;
-
-              // Header
-              // For header, we use a fixed horizontal margin of 30 for left/right alignment or user defined logic?
-              // The original code used `margin` for both vertical Y and horizontal X padding.
-              // Let's use 30 as a safe horizontal margin or reuse the vertical margin if no horizontal is specified.
-              // We'll stick to a default horizontal padding of 30pts for now to keep it simple, or use marginTop as approximate.
               const marginX = 30; 
 
               draw(page, replaceMacros(config.topLeft), marginX, headerY, 'left');
               draw(page, replaceMacros(config.topCenter), width / 2, headerY, 'center');
               draw(page, replaceMacros(config.topRight), width - marginX, headerY, 'right');
 
-              // Footer
               draw(page, replaceMacros(config.bottomLeft), marginX, footerY, 'left');
               draw(page, replaceMacros(config.bottomCenter), width / 2, footerY, 'center');
               draw(page, replaceMacros(config.bottomRight), width - marginX, footerY, 'right');
-          });
+
+              setProgress(Math.round(((idx + 1) / totalPages) * 100));
+          }
 
           const pdfBytes = await pdfDoc.save();
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
           setResultUrl(url);
           setStep('success');
-      } catch (e) {
+      } catch (e: any) {
           console.error(e);
-          alert("Error processing PDF");
+          if (e.message && (e.message.includes('encrypted') || e.message.includes('password'))) {
+            alert("This file is password protected. Please unlock it first.");
+          } else {
+            alert("Error processing PDF");
+          }
       } finally {
           setProcessing(false);
       }
@@ -199,6 +200,7 @@ const HeaderFooterPdf: React.FC = () => {
       setStep('upload');
       setResultUrl(null);
       setPreviewImage(null);
+      setProgress(0);
       setConfig({
           topLeft: '', topCenter: '', topRight: '',
           bottomLeft: '', bottomCenter: '', bottomRight: '',
@@ -210,54 +212,44 @@ const HeaderFooterPdf: React.FC = () => {
       });
   };
 
-  // UPLOAD VIEW
   if (step === 'upload') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">{t('tool.header-footer.title')}</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">{t('tool.header-footer.desc')}</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors">
+        <h1 className="text-4xl font-black text-gray-800 dark:text-white mb-2 text-center tracking-tight">Header & Footer</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium max-w-xl">Apply dynamic page numbers or custom text labels to your PDF files.</p>
         
         <div className="w-full max-w-xl">
            <button 
              onClick={() => fileInputRef.current?.click()}
-             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-3 text-xl group"
+             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 transition-all flex items-center justify-center gap-4 text-2xl group transform hover:-translate-y-1"
            >
-             <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
-             {t('ui.upload', 'Upload PDF file')}
-             <ChevronDown className="w-5 h-5 ml-2" />
+             <LayoutTemplate className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
+             Upload PDF file
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
+           <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4 font-black uppercase tracking-widest">
              Or drag and drop file here
            </p>
-        </div>
-
-        <div className="mt-16 max-w-2xl text-center">
-            <h3 className="font-bold text-gray-700 mb-2">How to add header and footer to PDF</h3>
-            <p className="text-sm text-gray-500">
-                Upload your PDF document. Type text or insert page numbers in the header or footer sections. Click 'Apply Header & Footer' to save.
-            </p>
         </div>
       </div>
     );
   }
 
-  // SUCCESS VIEW
   if (step === 'success' && resultUrl) {
     return (
-      <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Your document is ready</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+      <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-colors">
+        <h2 className="text-4xl font-black text-gray-800 dark:text-white mb-8 tracking-tighter">Labels Applied!</h2>
+        <div className="bg-white dark:bg-gray-900 p-12 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+                <Check className="w-12 h-12" />
             </div>
-            <p className="text-gray-500 mb-8">Header and Footer applied successfully.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`processed_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download
+            <p className="text-gray-500 dark:text-gray-400 text-lg mb-12 font-medium">Header and Footer tags have been applied to every page.</p>
+            <div className="flex flex-col sm:flex-row gap-5 justify-center">
+                <a href={resultUrl} download={`processed_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-5 px-12 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-1 active:scale-95 active:translate-y-0">
+                    <Download className="w-6 h-6" /> Download
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-5 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5" /> Start Over
                 </button>
             </div>
         </div>
@@ -265,191 +257,205 @@ const HeaderFooterPdf: React.FC = () => {
     );
   }
 
-  // EDITOR VIEW
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex flex-col font-sans transition-colors">
+        {processing && <ProcessingOverlay status="Stamping pages..." progress={progress} />}
+        
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between sticky top-[60px] z-30 shadow-sm">
-            <div>
-                <h2 className="text-xl font-bold text-gray-800">{t('tool.header-footer.title')}</h2>
-                <div className="text-sm text-gray-500">{file?.name}</div>
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-4 px-6 flex items-center justify-between sticky top-[70px] z-30 shadow-sm transition-colors">
+            <div className="flex items-center gap-4">
+                <button onClick={reset} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><ArrowLeft className="w-5 h-5"/></button>
+                <div>
+                    <h2 className="text-xl font-black text-gray-800 dark:text-white tracking-tight">Header & Footer</h2>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px] md:max-w-xs">{file?.name}</div>
+                </div>
             </div>
             <button 
                 onClick={handleApply}
                 disabled={processing}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-bold py-2 px-6 rounded shadow-sm flex items-center justify-center transition-colors"
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-black py-3 px-10 rounded-xl shadow-lg shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center transition-all transform hover:-translate-y-0.5 active:translate-y-0 uppercase tracking-widest text-xs"
             >
-                {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {t('headerfooter.apply', 'Apply changes')}
+                Apply changes
             </button>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col lg:row overflow-hidden flex-row">
             {/* Left Sidebar - Config */}
-            <div className="w-full md:w-96 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
+            <div className="w-full md:w-96 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto transition-colors z-20 shadow-xl">
                 {/* Style Settings */}
-                <div className="p-6 border-b border-gray-100">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <Type className="w-4 h-4" /> {t('headerfooter.style', 'Style')}
+                <div className="p-8 border-b border-gray-100 dark:border-gray-800">
+                    <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <Type className="w-3.5 h-3.5" /> Appearance Settings
                     </h3>
                     
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Font Family</label>
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Font Family</label>
                             <select 
                                 value={config.fontFamily}
                                 onChange={(e) => setConfig({...config, fontFamily: e.target.value})}
-                                className="w-full border border-gray-300 rounded p-2 text-sm"
+                                className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-brand-500 outline-none transition-all cursor-pointer"
                             >
                                 <option value="Helvetica">Helvetica</option>
                                 <option value="Times New Roman">Times New Roman</option>
                                 <option value="Courier New">Courier</option>
                             </select>
                         </div>
-                        <div>
-                             <label className="block text-xs font-medium text-gray-600 mb-1">Font Size</label>
+                        <div className="space-y-2">
+                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Size (pts)</label>
                              <input 
                                 type="number" 
                                 value={config.fontSize}
                                 onChange={(e) => setConfig({...config, fontSize: Number(e.target.value)})}
-                                className="w-full border border-gray-300 rounded p-2 text-sm"
+                                className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-xl px-3 py-2.5 text-sm font-bold"
                              />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
-                            <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Color</label>
+                            <div className="flex items-center gap-3 border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-xl p-1.5 pr-4">
                                 <input 
                                     type="color" 
                                     value={config.color}
                                     onChange={(e) => setConfig({...config, color: e.target.value})}
-                                    className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
+                                    className="w-8 h-8 p-0 border-0 rounded-lg cursor-pointer flex-shrink-0"
                                 />
-                                <span className="text-xs text-gray-500">{config.color}</span>
+                                <span className="text-[10px] text-gray-400 font-mono font-black uppercase truncate">{config.color}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Top Margin (pts)</label>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Top Margin</label>
                             <input 
                                 type="number" 
                                 value={config.marginTop}
                                 onChange={(e) => setConfig({...config, marginTop: Number(e.target.value)})}
-                                className="w-full border border-gray-300 rounded p-2 text-sm"
+                                className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-xl px-3 py-2.5 text-sm font-bold"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Bottom Margin (pts)</label>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Bottom Margin</label>
                             <input 
                                 type="number" 
                                 value={config.marginBottom}
                                 onChange={(e) => setConfig({...config, marginBottom: Number(e.target.value)})}
-                                className="w-full border border-gray-300 rounded p-2 text-sm"
+                                className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-xl px-3 py-2.5 text-sm font-bold"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Content Settings */}
-                <div className="flex-1 p-6">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <LayoutTemplate className="w-4 h-4" /> {t('headerfooter.content', 'Content')}
-                    </h3>
-
-                    <div className="space-y-6">
-                        {/* Header Inputs */}
-                        <div>
-                            <span className="text-sm font-bold text-gray-700 block mb-2">{t('headerfooter.header', 'Header')}</span>
-                            <div className="space-y-2">
-                                {POSITIONS.filter(p => p.group === 'Header').map(pos => (
-                                    <div key={pos.id} className="relative">
-                                        <div className="absolute left-2 top-2 text-gray-400 pointer-events-none">
-                                            {pos.align === 'left' ? <AlignLeft className="w-3 h-3"/> : pos.align === 'center' ? <AlignCenter className="w-3 h-3"/> : <AlignRight className="w-3 h-3"/>}
+                <div className="flex-1 p-8 space-y-10">
+                    <div>
+                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                            <Layout className="w-3.5 h-3.5" /> Header Content
+                        </h3>
+                        <div className="space-y-4">
+                            {POSITIONS.filter(p => p.group === 'Header').map(pos => (
+                                <div key={pos.id} className="space-y-1.5">
+                                    <div className="flex items-center justify-between px-1">
+                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{pos.label} Alignment</label>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => insertMacro('[page]', pos.id as any)} className="text-[9px] font-black uppercase text-brand-500 hover:text-brand-600 transition-colors">Add Page #</button>
+                                            <span className="text-gray-200">|</span>
+                                            <button onClick={() => insertMacro('[date]', pos.id as any)} className="text-[9px] font-black uppercase text-brand-500 hover:text-brand-600 transition-colors">Add Date</button>
+                                        </div>
+                                    </div>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 group-hover:text-brand-500 transition-colors pointer-events-none">
+                                            {pos.align === 'left' ? <AlignLeft className="w-4 h-4"/> : pos.align === 'center' ? <AlignCenter className="w-4 h-4"/> : <AlignRight className="w-4 h-4"/>}
                                         </div>
                                         <input 
                                             type="text" 
                                             value={(config as any)[pos.id]}
                                             onChange={(e) => setConfig({...config, [pos.id]: e.target.value})}
-                                            placeholder={`${pos.label} Text`}
-                                            className="w-full border border-gray-300 rounded pl-8 pr-2 py-1.5 text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                                            placeholder={`Type header text...`}
+                                            className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:border-brand-500 outline-none transition-all"
                                         />
-                                        <div className="flex gap-1 mt-1 justify-end">
-                                            <button onClick={() => insertMacro('[page]', pos.id as any)} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 rounded text-gray-600 flex items-center"><Plus className="w-3 h-3 mr-0.5"/> Page #</button>
-                                            <button onClick={() => insertMacro('[date]', pos.id as any)} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 rounded text-gray-600 flex items-center"><Plus className="w-3 h-3 mr-0.5"/> Date</button>
-                                        </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
+                    </div>
 
-                        {/* Footer Inputs */}
-                        <div>
-                            <span className="text-sm font-bold text-gray-700 block mb-2">{t('headerfooter.footer', 'Footer')}</span>
-                            <div className="space-y-2">
-                                {POSITIONS.filter(p => p.group === 'Footer').map(pos => (
-                                    <div key={pos.id} className="relative">
-                                        <div className="absolute left-2 top-2 text-gray-400 pointer-events-none">
-                                            {pos.align === 'left' ? <AlignLeft className="w-3 h-3"/> : pos.align === 'center' ? <AlignCenter className="w-3 h-3"/> : <AlignRight className="w-3 h-3"/>}
+                    <div>
+                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                            <LayoutTemplate className="w-3.5 h-3.5" /> Footer Content
+                        </h3>
+                        <div className="space-y-4">
+                            {POSITIONS.filter(p => p.group === 'Footer').map(pos => (
+                                <div key={pos.id} className="space-y-1.5">
+                                    <div className="flex items-center justify-between px-1">
+                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{pos.label} Alignment</label>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => insertMacro('[page]', pos.id as any)} className="text-[9px] font-black uppercase text-brand-500 hover:text-brand-600 transition-colors">Add Page #</button>
+                                            <span className="text-gray-200">|</span>
+                                            <button onClick={() => insertMacro('[date]', pos.id as any)} className="text-[9px] font-black uppercase text-brand-500 hover:text-brand-600 transition-colors">Add Date</button>
+                                        </div>
+                                    </div>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 group-hover:text-brand-500 transition-colors pointer-events-none">
+                                            {pos.align === 'left' ? <AlignLeft className="w-4 h-4"/> : pos.align === 'center' ? <AlignCenter className="w-4 h-4"/> : <AlignRight className="w-4 h-4"/>}
                                         </div>
                                         <input 
                                             type="text" 
                                             value={(config as any)[pos.id]}
                                             onChange={(e) => setConfig({...config, [pos.id]: e.target.value})}
-                                            placeholder={`${pos.label} Text`}
-                                            className="w-full border border-gray-300 rounded pl-8 pr-2 py-1.5 text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                                            placeholder={`Type footer text...`}
+                                            className="w-full border-2 border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:border-brand-500 outline-none transition-all"
                                         />
-                                        <div className="flex gap-1 mt-1 justify-end">
-                                            <button onClick={() => insertMacro('[page]', pos.id as any)} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 rounded text-gray-600 flex items-center"><Plus className="w-3 h-3 mr-0.5"/> Page #</button>
-                                            <button onClick={() => insertMacro('[date]', pos.id as any)} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 rounded text-gray-600 flex items-center"><Plus className="w-3 h-3 mr-0.5"/> Date</button>
-                                        </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Right - Preview */}
-            <div className="flex-1 bg-gray-100 p-8 flex items-center justify-center overflow-auto relative">
-                {loading && <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />}
-                {!loading && previewImage && (
-                    <div className="relative shadow-lg bg-white">
-                        <img src={previewImage} alt="Preview" className="max-h-[80vh] w-auto border border-gray-200" />
+            <div className="flex-1 bg-gray-100 dark:bg-gray-950 p-8 md:p-12 flex items-center justify-center overflow-auto relative transition-colors">
+                {loading ? (
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="w-12 h-12 text-brand-500 animate-spin" />
+                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Generating Live Preview</span>
+                    </div>
+                ) : previewImage && (
+                    <div className="relative shadow-2xl bg-white rounded-sm border border-gray-200 dark:border-gray-800 animate-in zoom-in-95 duration-500">
+                        <img src={previewImage} alt="Preview" className="max-h-[75vh] w-auto pointer-events-none" />
                         
                         {/* Overlay Preview Elements */}
-                        {/* Note: We use relative positioning percentages to approximate standard page layout for preview */}
                         {/* Header Zone */}
-                        <div className="absolute top-0 left-0 right-0 px-[5%]" style={{ paddingTop: `${(config.marginTop / (pageSize?.height || 792)) * 100}%` }}>
+                        <div className="absolute top-0 left-0 right-0 px-[6%]" style={{ paddingTop: `${(config.marginTop / (pageSize?.height || 792)) * 100}%` }}>
                             <div className="flex justify-between items-start text-xs leading-none" 
                                  style={{ 
-                                     fontFamily: config.fontFamily, 
+                                     fontFamily: config.fontFamily === 'Helvetica' ? 'sans-serif' : 'serif', 
                                      fontSize: `${config.fontSize}px`, 
                                      color: config.color 
                                  }}
                             >
-                                <div className="w-1/3 text-left whitespace-pre-wrap">{config.topLeft.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
-                                <div className="w-1/3 text-center whitespace-pre-wrap">{config.topCenter.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
-                                <div className="w-1/3 text-right whitespace-pre-wrap">{config.topRight.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
+                                <div className="w-1/3 text-left whitespace-pre-wrap truncate">{config.topLeft.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
+                                <div className="w-1/3 text-center whitespace-pre-wrap truncate">{config.topCenter.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
+                                <div className="w-1/3 text-right whitespace-pre-wrap truncate">{config.topRight.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
                             </div>
                         </div>
 
                         {/* Footer Zone */}
-                        <div className="absolute bottom-0 left-0 right-0 px-[5%]" style={{ paddingBottom: `${(config.marginBottom / (pageSize?.height || 792)) * 100}%` }}>
+                        <div className="absolute bottom-0 left-0 right-0 px-[6%]" style={{ paddingBottom: `${(config.marginBottom / (pageSize?.height || 792)) * 100}%` }}>
                              <div className="flex justify-between items-end text-xs leading-none" 
                                  style={{ 
-                                     fontFamily: config.fontFamily, 
+                                     fontFamily: config.fontFamily === 'Helvetica' ? 'sans-serif' : 'serif', 
                                      fontSize: `${config.fontSize}px`, 
                                      color: config.color 
                                  }}
                             >
-                                <div className="w-1/3 text-left whitespace-pre-wrap">{config.bottomLeft.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
-                                <div className="w-1/3 text-center whitespace-pre-wrap">{config.bottomCenter.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
-                                <div className="w-1/3 text-right whitespace-pre-wrap">{config.bottomRight.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, '12/31/2024')}</div>
+                                <div className="w-1/3 text-left whitespace-pre-wrap truncate">{config.bottomLeft.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
+                                <div className="w-1/3 text-center whitespace-pre-wrap truncate">{config.bottomCenter.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
+                                <div className="w-1/3 text-right whitespace-pre-wrap truncate">{config.bottomRight.replace(/\[page\]/g, '1').replace(/\[total\]/g, '5').replace(/\[date\]/g, new Date().toLocaleDateString())}</div>
                             </div>
                         </div>
                     </div>

@@ -1,8 +1,10 @@
+
 import React, { useState, useRef } from 'react';
-import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, Trash2, RotateCw, Plus, GripVertical } from 'lucide-react';
+import { FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, Trash2, RotateCw, Plus, GripVertical, ArrowLeft, Layout } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, degrees } from 'pdf-lib';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ProcessingOverlay from '../ProcessingOverlay';
 
 // Safely handle pdfjs-dist import
 const pdfjs = (pdfjsLib as any).default || pdfjsLib;
@@ -92,8 +94,6 @@ const OrganizePdf: React.FC = () => {
     }
   };
 
-  // --- ACTIONS ---
-
   const rotatePage = (index: number) => {
       const newPages = [...pages];
       newPages[index].rotation = (newPages[index].rotation + 90) % 360;
@@ -107,7 +107,6 @@ const OrganizePdf: React.FC = () => {
   };
 
   const insertBlankPage = (index: number) => {
-      // Create a white placeholder image for the blank page
       const canvas = document.createElement('canvas');
       canvas.width = 150;
       canvas.height = 200;
@@ -120,7 +119,7 @@ const OrganizePdf: React.FC = () => {
           
           const newPage: PageItem = {
               id: `blank-${Math.random()}`,
-              originalIndex: -1, // Flag for blank
+              originalIndex: -1,
               imageSrc: canvas.toDataURL(),
               rotation: 0
           };
@@ -131,16 +130,13 @@ const OrganizePdf: React.FC = () => {
       }
   };
 
-  // --- DRAG AND DROP ---
-
   const onDragStart = (e: React.DragEvent, index: number) => {
       setDraggedItemIndex(index);
       e.dataTransfer.effectAllowed = "move";
-      // e.dataTransfer.setData('text/plain', index.toString()); // Not strictly needed if we use state
   };
 
   const onDragOver = (e: React.DragEvent, index: number) => {
-      e.preventDefault(); // Necessary to allow dropping
+      e.preventDefault();
       e.dataTransfer.dropEffect = "move";
   };
 
@@ -164,15 +160,16 @@ const OrganizePdf: React.FC = () => {
       }
 
       setProcessing(true);
+      setProgress(0);
       try {
           const arrayBuffer = await file.arrayBuffer();
           const srcDoc = await PDFDocument.load(arrayBuffer, { password: '' } as any);
           const newDoc = await PDFDocument.create();
 
-          for (const pageItem of pages) {
+          for (let i = 0; i < pages.length; i++) {
+              const pageItem = pages[i];
               let page;
               if (pageItem.originalIndex === -1) {
-                  // Blank Page (A4 default)
                   page = newDoc.addPage([595, 842]);
               } else {
                   const [copiedPage] = await newDoc.copyPages(srcDoc, [pageItem.originalIndex]);
@@ -181,6 +178,7 @@ const OrganizePdf: React.FC = () => {
               
               const currentRotation = page.getRotation().angle;
               page.setRotation(degrees(currentRotation + pageItem.rotation));
+              setProgress(Math.round(((i + 1) / pages.length) * 100));
           }
 
           const pdfBytes = await newDoc.save();
@@ -202,25 +200,25 @@ const OrganizePdf: React.FC = () => {
       setPages([]);
       setStep('upload');
       setResultUrl(null);
+      setProgress(0);
   };
 
   if (step === 'upload') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 py-20 px-4 font-sans">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">Organize PDF</h1>
-        <p className="text-gray-500 text-lg mb-10 text-center">Sort, add and delete PDF pages</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-20 px-4 font-sans transition-colors">
+        <h1 className="text-4xl font-black text-gray-800 dark:text-white mb-2 text-center tracking-tight">Organize PDF</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 text-center font-medium max-w-xl">Sort, add, delete and rotate PDF pages with ease.</p>
         
         <div className="w-full max-w-xl">
            <button 
              onClick={() => fileInputRef.current?.click()}
-             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-3 text-xl group"
+             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-7 rounded-2xl shadow-xl shadow-brand-200 dark:shadow-brand-900/20 transition-all flex items-center justify-center gap-4 text-2xl group transform hover:-translate-y-1"
            >
-             <FileUp className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+             <Layout className="w-9 h-9 group-hover:-translate-y-1 transition-transform" />
              Upload PDF file
-             <ChevronDown className="w-5 h-5 ml-2" />
            </button>
            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" className="hidden" />
-           <p className="text-xs text-center text-gray-400 mt-4">
+           <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4 font-black uppercase tracking-widest">
              Or drag and drop file here
            </p>
         </div>
@@ -230,19 +228,19 @@ const OrganizePdf: React.FC = () => {
 
   if (step === 'success' && resultUrl) {
     return (
-      <div className="min-h-[80vh] bg-gray-50 flex flex-col items-center pt-12 px-4 font-sans">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Your document is ready</h2>
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 max-w-2xl w-full text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8" />
+      <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-colors">
+        <h2 className="text-4xl font-black text-gray-800 dark:text-white mb-8 tracking-tighter">PDF Organized!</h2>
+        <div className="bg-white dark:bg-gray-900 p-12 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full text-center animate-in zoom-in-95 duration-500">
+            <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+                <Check className="w-12 h-12" />
             </div>
-            <p className="text-gray-500 mb-8">PDF organized successfully.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href={resultUrl} download={`organized_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-8 rounded-md shadow-md flex items-center justify-center gap-2 transition-colors">
-                    <Download className="w-5 h-5" /> Download PDF
+            <p className="text-gray-500 dark:text-gray-400 text-lg mb-12 font-medium">Your customized document structure is ready for download.</p>
+            <div className="flex flex-col sm:flex-row gap-5 justify-center">
+                <a href={resultUrl} download={`organized_${file?.name}`} className="bg-brand-500 hover:bg-brand-600 text-white font-black py-5 px-12 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-1 active:scale-95 active:translate-y-0">
+                    <Download className="w-6 h-6" /> Download PDF
                 </a>
-                <button onClick={reset} className="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors">
-                    <RefreshCw className="w-4 h-4" /> Start Over
+                <button onClick={reset} className="bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold py-5 px-8 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5" /> Start Over
                 </button>
             </div>
         </div>
@@ -250,38 +248,41 @@ const OrganizePdf: React.FC = () => {
     );
   }
 
-  // Editor View
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex flex-col font-sans transition-colors">
+        {processing && <ProcessingOverlay status="Building new PDF..." progress={progress} />}
+        
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between sticky top-[60px] z-30 shadow-sm">
-            <div>
-                <h2 className="text-xl font-bold text-gray-800">Organize PDF pages</h2>
-                <div className="text-sm text-gray-500">{file?.name}</div>
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 py-4 px-6 flex flex-col sm:flex-row items-center justify-between sticky top-[70px] z-30 shadow-sm gap-4 transition-colors">
+            <div className="flex items-center gap-4">
+                <button onClick={reset} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><ArrowLeft className="w-5 h-5"/></button>
+                <div>
+                    <h2 className="text-xl font-black text-gray-800 dark:text-white tracking-tight">Organize Pages</h2>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px] md:max-w-xs">{file?.name}</div>
+                </div>
             </div>
-            <div className="flex gap-2">
-                <button onClick={() => insertBlankPage(pages.length)} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded shadow-sm hover:bg-gray-50 flex items-center gap-2">
+            <div className="flex gap-3">
+                <button onClick={() => insertBlankPage(pages.length)} className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-gray-200 dark:border-gray-700 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Blank Page
                 </button>
                 <button 
                     onClick={handleSave}
                     disabled={processing}
-                    className="bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-bold py-2 px-6 rounded shadow-sm flex items-center justify-center transition-colors"
+                    className="bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-black py-2.5 px-8 rounded-xl shadow-lg shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-xs uppercase tracking-widest"
                 >
-                    {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Save
+                    Apply changes
                 </button>
             </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8">
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-64">
-                    <Loader2 className="w-10 h-10 text-brand-500 animate-spin mb-4" />
-                    <p className="text-gray-500">Loading pages...</p>
+                <div className="flex flex-col items-center justify-center h-64 mt-20">
+                    <Loader2 className="w-16 h-16 text-brand-500 animate-spin mb-6" />
+                    <p className="text-gray-500 dark:text-gray-400 font-bold tracking-tight">Rendering document layout...</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8 max-w-7xl mx-auto pb-32">
                     {pages.map((page, index) => (
                         <div 
                             key={page.id}
@@ -290,32 +291,32 @@ const OrganizePdf: React.FC = () => {
                             onDragOver={(e) => onDragOver(e, index)}
                             onDrop={(e) => onDrop(e, index)}
                             className={`
-                                relative group bg-white p-2 rounded shadow-sm border-2 cursor-grab active:cursor-grabbing transition-all
-                                ${draggedItemIndex === index ? 'opacity-50 border-brand-300' : 'border-transparent hover:border-gray-300 hover:shadow-md'}
+                                relative group bg-white dark:bg-gray-900 p-3 rounded-2xl shadow-md border-2 cursor-grab active:cursor-grabbing transition-all
+                                ${draggedItemIndex === index ? 'opacity-30 border-brand-500 scale-95' : 'border-transparent hover:border-brand-200 dark:hover:border-brand-900 hover:shadow-xl'}
                             `}
                         >
-                            <div className="relative aspect-[3/4] bg-gray-50 mb-2 overflow-hidden rounded-sm flex items-center justify-center">
+                            <div className="relative aspect-[3/4] bg-gray-50 dark:bg-gray-800 mb-3 overflow-hidden rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-700">
                                 <img 
                                     src={page.imageSrc} 
                                     alt={`Page ${index + 1}`} 
-                                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                                    className="max-w-full max-h-full object-contain pointer-events-none select-none transition-transform duration-300"
                                     style={{ transform: `rotate(${page.rotation}deg)` }}
                                 />
-                                {page.originalIndex === -1 && <span className="absolute text-gray-300 text-xs font-bold">BLANK</span>}
+                                {page.originalIndex === -1 && <span className="absolute text-gray-300 dark:text-gray-600 text-[10px] font-black tracking-widest uppercase">Blank Page</span>}
                                 
-                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <GripVertical className="text-white w-8 h-8 drop-shadow-md" />
+                                <div className="absolute inset-0 bg-black/5 dark:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <GripVertical className="text-white w-10 h-10 drop-shadow-lg" />
                                 </div>
                             </div>
                             
                             <div className="flex items-center justify-between px-1">
-                                <span className="text-xs font-medium text-gray-500">{index + 1}</span>
-                                <div className="flex gap-1">
-                                    <button onClick={() => rotatePage(index)} className="p-1 text-gray-400 hover:text-brand-600 hover:bg-gray-100 rounded" title="Rotate">
-                                        <RotateCw className="w-3.5 h-3.5" />
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">#{index + 1}</span>
+                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => rotatePage(index)} className="p-2 text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors" title="Rotate 90°">
+                                        <RotateCw className="w-4 h-4" />
                                     </button>
-                                    <button onClick={() => deletePage(index)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded" title="Delete">
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                    <button onClick={() => deletePage(index)} className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Remove Page">
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
@@ -325,10 +326,10 @@ const OrganizePdf: React.FC = () => {
                     {/* Add Page Button at End */}
                     <button 
                         onClick={() => insertBlankPage(pages.length)}
-                        className="aspect-[3/4] border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center text-gray-400 hover:border-brand-400 hover:text-brand-500 hover:bg-white transition-colors"
+                        className="aspect-[3/4] border-4 border-dashed border-gray-200 dark:border-gray-800 rounded-[2rem] flex flex-col items-center justify-center text-gray-300 dark:text-gray-700 hover:border-brand-500 hover:text-brand-500 hover:bg-white dark:hover:bg-gray-900 transition-all group"
                     >
-                        <Plus className="w-8 h-8 mb-2" />
-                        <span className="text-xs font-medium">Add Blank Page</span>
+                        <Plus className="w-12 h-12 mb-3 group-hover:scale-110 group-hover:rotate-90 transition-transform duration-500" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Add Page</span>
                     </button>
                 </div>
             )}

@@ -27,19 +27,19 @@ const CategoryList = ({ category, onToolClick, t }: { category: ToolCategory | u
 
   return (
     <div className="mb-6 break-inside-avoid">
-      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 pb-2 mb-3">
+      <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2 mb-3">
         {getCatTitle(category.title)}
       </h3>
-      <ul className="space-y-2">
+      <ul className="space-y-1">
         {category.items.map((item) => (
           <li key={item.id}>
             <a 
               href="#" 
               onClick={(e) => onToolClick(item.id, e)}
-              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 group/item transition-colors"
+              className="flex items-center px-2 py-1.5 text-black dark:text-gray-200 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-900/10 rounded-lg group/item transition-all duration-200"
             >
-              <item.icon className={`w-4 h-4 mr-2 ${item.color || 'text-gray-400'} flex-shrink-0`} />
-              <span className="text-sm font-medium group-hover:text-brand-600 dark:group-hover:text-brand-400">
+              <item.icon className={`w-4 h-4 mr-2 ${item.color || 'text-gray-400'} group-hover/item:text-brand-500 flex-shrink-0 transition-colors`} />
+              <span className="text-sm font-semibold">
                 {t(`tool.${item.id}.title`, item.title)}
               </span>
             </a>
@@ -156,8 +156,8 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                     
                     {/* Mega Menu */}
                     {isDropdownOpen && (
-                      <div className="absolute top-[60px] left-0 pt-2 w-[750px] lg:w-[960px] block z-50">
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-8 grid grid-cols-4 gap-8 max-h-[85vh] overflow-y-auto">
+                      <div className="absolute top-[60px] left-0 pt-2 w-[750px] lg:w-[960px] block z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-gray-100 dark:border-gray-800 p-8 grid grid-cols-4 gap-8 max-h-[85vh] overflow-y-auto">
                           <div className="col-span-1"><CategoryList category={getCategory('MOST POPULAR')} onToolClick={handleToolClick} t={t} /></div>
                           <div className="col-span-1">
                             <CategoryList category={getCategory('MERGE')} onToolClick={handleToolClick} t={t} />
@@ -234,7 +234,7 @@ const Navbar: React.FC<NavProps> = ({ onNavigate }) => {
                 />
             </div>
 
-            {/* Dark Mode Toggle - Added as requested */}
+            {/* Dark Mode Toggle */}
             <button 
               onClick={toggleDarkMode}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

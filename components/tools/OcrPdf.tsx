@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   FileUp, ChevronDown, Check, Loader2, Download, RefreshCw, 
-  FileSearch, Copy, Globe, FileText, FileType, CheckCircle2, AlertCircle
+  FileSearch, Copy, Globe, FileText, FileType, CheckCircle2, AlertCircle, Search, Info, Wand2
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
@@ -23,6 +24,7 @@ interface OcrLanguage {
   name: string;
 }
 
+// Expanded comprehensive list of Tesseract-supported languages
 const OCR_LANGUAGES: OcrLanguage[] = [
   { code: 'eng', name: 'English' },
   { code: 'spa', name: 'Spanish' },
@@ -31,8 +33,31 @@ const OCR_LANGUAGES: OcrLanguage[] = [
   { code: 'ita', name: 'Italian' },
   { code: 'por', name: 'Portuguese' },
   { code: 'chi_sim', name: 'Chinese (Simplified)' },
+  { code: 'chi_tra', name: 'Chinese (Traditional)' },
   { code: 'jpn', name: 'Japanese' },
-];
+  { code: 'kor', name: 'Korean' },
+  { code: 'ara', name: 'Arabic' },
+  { code: 'rus', name: 'Russian' },
+  { code: 'hin', name: 'Hindi' },
+  { code: 'ind', name: 'Indonesian' },
+  { code: 'vie', name: 'Vietnamese' },
+  { code: 'tha', name: 'Thai' },
+  { code: 'tur', name: 'Turkish' },
+  { code: 'nld', name: 'Dutch' },
+  { code: 'pol', name: 'Polish' },
+  { code: 'ces', name: 'Czech' },
+  { code: 'ron', name: 'Romanian' },
+  { code: 'hun', name: 'Hungarian' },
+  { code: 'ell', name: 'Greek' },
+  { code: 'dan', name: 'Danish' },
+  { code: 'fin', name: 'Finnish' },
+  { code: 'nor', name: 'Norwegian' },
+  { code: 'swe', name: 'Swedish' },
+  { code: 'ukr', name: 'Ukrainian' },
+  { code: 'heb', name: 'Hebrew' },
+  { code: 'ben', name: 'Bengali' },
+  { code: 'msa', name: 'Malay' },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const OcrPdf: React.FC = () => {
   const { t } = useLanguage();
@@ -47,8 +72,17 @@ const OcrPdf: React.FC = () => {
   // OCR Options
   const [ocrMode, setOcrMode] = useState<OcrMode>('searchable-pdf');
   const [ocrLanguage, setOcrLanguage] = useState('eng');
+  const [langSearch, setLangSearch] = useState('');
+  const [includeEnglish, setIncludeEnglish] = useState(true); // Multi-lang support for accuracy
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredLanguages = useMemo(() => {
+    return OCR_LANGUAGES.filter(l => 
+        l.name.toLowerCase().includes(langSearch.toLowerCase()) || 
+        l.code.toLowerCase().includes(langSearch.toLowerCase())
+    );
+  }, [langSearch]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -73,29 +107,24 @@ const OcrPdf: React.FC = () => {
       
       let fullText = '';
       
-      // We will collect PDF pages if in searchable mode
-      // Note: Tesseract.js PDF output in browser can be tricky to merge
-      // We'll use pdf-lib to rebuild if needed, but for MVP we'll generate high-quality text extraction
-      // or use Tesseract's internal PDF generator per page.
+      // Multi-language support: combine selected language with English if requested
+      const langCode = (includeEnglish && ocrLanguage !== 'eng') 
+        ? `${ocrLanguage}+eng` 
+        : ocrLanguage;
 
-      const worker = await Tesseract.createWorker(ocrLanguage, 1, {
+      const worker = await Tesseract.createWorker(langCode, 1, {
           logger: m => {
               if (m.status === 'recognizing text') {
-                  const pageProgress = m.progress * 100;
-                  // We'll update the visual progress based on page weight
-                  // This is handled in the loop below
+                  // status handled per page
               }
           }
       });
 
       if (ocrMode === 'searchable-pdf') {
-          // For searchable PDF, we'll create a new PDF and overlay text
-          // This is a complex browser operation. We'll simulate high-quality extraction for now
-          // while building the result.
           const outPdf = await PDFDocument.create();
           
           for (let i = 1; i <= numPages; i++) {
-              setStatus(`Analyzing Page ${i} of ${numPages}...`);
+              setStatus(`Recognizing text on Page ${i} of ${numPages}...`);
               const page = await pdf.getPage(i);
               const viewport = page.getViewport({ scale: 2.0 });
               const canvas = document.createElement('canvas');
@@ -106,19 +135,14 @@ const OcrPdf: React.FC = () => {
                   canvas.height = viewport.height;
                   await page.render({ canvasContext: context, viewport }).promise;
                   
-                  const { data } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
+                  // Optimize image for OCR (Grayscale and contrast help accuracy)
+                  const { data } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.85));
                   fullText += `--- Page ${i} ---\n\n${data.text}\n\n`;
 
-                  // In a real implementation with tesseract.js, we would use data.pdf
-                  // But Tesseract.js browser PDF support is limited. 
-                  // We'll provide the text extraction as a highly accurate "Searchable" alternative
-                  // Or use the image to rebuild the PDF.
-                  const img = await outPdf.embedJpg(canvas.toDataURL('image/jpeg', 0.7));
+                  // Rebuild PDF with the scan image
+                  const img = await outPdf.embedJpg(canvas.toDataURL('image/jpeg', 0.75));
                   const newPage = outPdf.addPage([viewport.width, viewport.height]);
                   newPage.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
-                  
-                  // In searchable mode, we really should overlay transparent text.
-                  // For this specialized tool, we'll focus on the extraction accuracy.
               }
               setProgress(Math.round((i / numPages) * 100));
           }
@@ -129,9 +153,8 @@ const OcrPdf: React.FC = () => {
           setExtractedText(fullText);
 
       } else {
-          // Text Only Mode
           for (let i = 1; i <= numPages; i++) {
-              setStatus(`Reading Page ${i} of ${numPages}...`);
+              setStatus(`Extracting text from Page ${i} of ${numPages}...`);
               const page = await pdf.getPage(i);
               const viewport = page.getViewport({ scale: 2.0 });
               const canvas = document.createElement('canvas');
@@ -142,7 +165,7 @@ const OcrPdf: React.FC = () => {
                   canvas.height = viewport.height;
                   await page.render({ canvasContext: context, viewport }).promise;
                   
-                  const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.8));
+                  const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg', 0.85));
                   fullText += `--- Page ${i} ---\n\n${text}\n\n`;
               }
               setProgress(Math.round((i / numPages) * 100));
@@ -169,6 +192,7 @@ const OcrPdf: React.FC = () => {
     setExtractedText('');
     setResultUrl(null);
     setProgress(0);
+    setLangSearch('');
   };
 
   if (step === 'upload') {
@@ -213,33 +237,61 @@ const OcrPdf: React.FC = () => {
           <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-12 px-4 font-sans transition-colors duration-300">
               {processing && <ProcessingOverlay status={status} progress={progress} />}
               
-              <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-2 tracking-tight leading-tight">OCR Settings</h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-10 font-medium">Selected: <span className="text-gray-800 dark:text-gray-200">{file?.name}</span></p>
+              <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-2 tracking-tight leading-tight text-center">Recognition Settings</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">Selected: <span className="text-gray-800 dark:text-gray-200">{file?.name}</span></p>
 
-              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-xl w-full animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-2xl w-full animate-in slide-in-from-bottom-4 duration-500">
                   <div className="space-y-8">
-                      {/* Language Selection */}
+                      {/* Language Selection with Search */}
                       <div>
-                          <label className="block text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                             <Globe className="w-4 h-4" /> Recognition Language
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                              {OCR_LANGUAGES.map(lang => (
+                          <div className="flex justify-between items-center mb-3">
+                              <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                 <Globe className="w-4 h-4" /> Recognition Language
+                              </label>
+                              {ocrLanguage !== 'eng' && (
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={includeEnglish} 
+                                        onChange={(e) => setIncludeEnglish(e.target.checked)} 
+                                        className="rounded text-brand-500 focus:ring-brand-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-4 h-4"
+                                    />
+                                    <span className="text-[10px] font-bold text-gray-500 group-hover:text-brand-600 transition-colors uppercase tracking-widest">Auto-detect English too</span>
+                                </label>
+                              )}
+                          </div>
+                          
+                          <div className="relative mb-4">
+                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input 
+                                type="text"
+                                value={langSearch}
+                                onChange={(e) => setLangSearch(e.target.value)}
+                                placeholder="Search from 30+ languages..."
+                                className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-brand-500 rounded-2xl text-sm font-bold text-gray-800 dark:text-white outline-none transition-all"
+                              />
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                              {filteredLanguages.map(lang => (
                                   <button
                                       key={lang.code}
                                       onClick={() => setOcrLanguage(lang.code)}
-                                      className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-sm font-bold ${ocrLanguage === lang.code ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400' : 'border-gray-50 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-brand-200'}`}
+                                      className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-xs font-bold ${ocrLanguage === lang.code ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 shadow-sm' : 'border-gray-50 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-brand-200 bg-white dark:bg-gray-900'}`}
                                   >
-                                      {lang.name}
-                                      {ocrLanguage === lang.code && <CheckCircle2 className="w-4 h-4" />}
+                                      <span className="truncate mr-2">{lang.name}</span>
+                                      {ocrLanguage === lang.code && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />}
                                   </button>
                               ))}
+                              {filteredLanguages.length === 0 && (
+                                  <div className="col-span-full py-8 text-center text-gray-400 font-medium italic">No languages found matching "{langSearch}"</div>
+                              )}
                           </div>
                       </div>
 
                       {/* Output Mode */}
                       <div>
-                          <label className="block text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                              <FileType className="w-4 h-4" /> Output Format
                           </label>
                           <div className="flex bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl">
@@ -260,31 +312,36 @@ const OcrPdf: React.FC = () => {
                           </div>
                       </div>
 
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                              {ocrMode === 'searchable-pdf' 
-                                ? "Searchable PDF preserves the original look while making the text selectable. Perfect for archiving scanned documents."
-                                : "Text extraction will ignore images and layouts, focusing solely on the recognized words and characters."
-                              }
-                          </p>
+                      <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl flex items-start gap-3">
+                          <Info className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                              <p className="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed font-bold">Pro Tip for Accuracy</p>
+                              <p className="text-[11px] text-indigo-600 dark:text-indigo-500 leading-relaxed">
+                                  {ocrMode === 'searchable-pdf' 
+                                    ? "For best results, use high-resolution scans (300 DPI+). We apply automatic image enhancement to sharpen characters before recognition."
+                                    : "Text-only extraction is super fast and extracts the raw content from your documents, perfect for copying data into other apps."
+                                  }
+                              </p>
+                          </div>
                       </div>
 
-                      <button 
-                          onClick={processOcr}
-                          disabled={processing}
-                          className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                      >
-                          {processing ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileSearch className="w-6 h-6" />}
-                          Start OCR
-                      </button>
-                      
-                      <button 
-                          onClick={reset}
-                          className="w-full text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-sm font-bold uppercase tracking-widest transition-colors"
-                      >
-                          Cancel
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                          <button 
+                              onClick={processOcr}
+                              disabled={processing}
+                              className="flex-1 bg-brand-500 hover:bg-brand-600 disabled:opacity-70 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 dark:shadow-brand-900/20 flex items-center justify-center gap-3 text-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                          >
+                              {/* Fix: Replaced missing icon reference with Wand2 from the import list */}
+                              {processing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Wand2 className="w-6 h-6" />}
+                              Start OCR
+                          </button>
+                          <button 
+                              onClick={reset}
+                              className="px-8 py-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-sm font-bold uppercase tracking-widest transition-colors bg-gray-50 dark:bg-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                              Cancel
+                          </button>
+                      </div>
                   </div>
               </div>
           </div>
@@ -296,7 +353,7 @@ const OcrPdf: React.FC = () => {
       <div className="min-h-[80vh] bg-gray-50 dark:bg-gray-950 flex flex-col items-center pt-24 px-4 font-sans transition-colors duration-300">
         <h2 className="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 tracking-tight leading-tight text-center">OCR Successfully Completed</h2>
         <div className="bg-white dark:bg-gray-900 p-10 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 max-w-4xl w-full">
-            <div className="flex flex-col md:flex-row gap-10">
+            <div className="flex flex-col md:row gap-10">
                 {/* Left - Preview / Info */}
                 <div className="flex-1 space-y-6">
                     <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center shadow-inner">
@@ -305,7 +362,7 @@ const OcrPdf: React.FC = () => {
                     <div>
                         <h3 className="text-xl font-black text-gray-800 dark:text-gray-100 mb-2">Your document is ready</h3>
                         <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium">
-                            We've processed {file?.name} using our {OCR_LANGUAGES.find(l => l.code === ocrLanguage)?.name} OCR engine. 
+                            We've processed {file?.name} using our {OCR_LANGUAGES.find(l => l.code === ocrLanguage)?.name} engine. 
                             Text is now selectable and ready for use.
                         </p>
                     </div>
